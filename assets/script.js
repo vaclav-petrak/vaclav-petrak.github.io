@@ -1,0 +1,122 @@
+// --- DOM Element References ---
+const chatWindow = document.getElementById('chat-window');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+
+// --- Dynamic System Prompt Initialization ---
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, '0');
+const dd = String(today.getDate()).padStart(2, '0');
+const formattedDate = `${yyyy}-${mm}-${dd}`;
+const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+const systemPromptContent = `You are a specialized flight search assistant for Ryanair. Your primary purpose is to help users find flight information by using the 'find_flights' tool you have been given. 
+
+Today's date is ${dayOfWeek}, ${formattedDate}. Use this for any relative date queries like "tomorrow" or "next weekend".
+
+Your instructions are:
+1. When a user asks about flights, you MUST use the 'find_flights' tool.
+2. Analyze the user's query to extract the necessary parameters for the tool: 'departureAirportIataCode', 'arrivalAirportIataCode' (if provided), and dates.
+3. If essential information like the departure airport or a date is missing, you MUST ask the user for clarification before using the tool.
+4. If a relative date is ambiguous (e.g., if today is Sunday, 'next Monday' could mean tomorrow or a week from tomorrow), you MUST ask the user to clarify which specific date they mean.
+5. Once you receive data from the tool, present it to the user in a clear, easy-to-read summary. Use Markdown for formatting (e.g., bolding, lists) to improve readability. If there are multiple flights, always mention the cheapest options first.
+6. Do not make up flight information. If the tool returns no results, inform the user that no flights were found for their criteria.
+7. Round prices to nearst unit and add space as thousands separator e.g. price 1612.01 CZK should be 1 612 CZK 
+8. If someone asks about flights from a country or area, think analyze first if the cities are in the country. (E.g If somenone asks about flights to Greece, present Skiathos, Corfu, etc. (if the flight is relevant))
+8. You are allowed to answer other questions. You are not limited to flight related questions. 
+`;
+
+let conversationHistory = [
+    { role: "system", content: systemPromptContent }
+];
+
+// --- Event Listeners ---
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter') {
+sendMessage();
+    }
+});
+
+// --- Main Functions ---
+async function sendMessage() {
+    const messageText = messageInput.value.trim();
+    if (messageText === '') return;
+
+    addMessageToChat('user', messageText);
+    conversationHistory.push({ role: "user", content: messageText });
+    messageInput.value = '';
+
+    try {
+const thinkingIndicator = addMessageToChat('bot', 'Thinking...', true);
+const botResponse = await getOpenAiResponse(conversationHistory);
+thinkingIndicator.remove();
+addMessageToChat('bot', botResponse);
+conversationHistory.push({ role: "assistant", content: botResponse });
+    } catch (error) {
+console.error("Error fetching from OpenAI:", error);
+addMessageToChat('bot', 'Sorry, I ran into an error. Please check the console for details.');
+    }
+}
+
+/**
+ * MODIFIED: Adds a new message to the chat window, rendering Markdown for bot messages.
+ * @param {string} sender - Who sent the message ('user' or 'bot').
+ * @param {string} text - The message content.
+ * @param {boolean} isThinking - Optional flag for the thinking indicator.
+ * @returns {HTMLElement} The created message element.
+ */
+function addMessageToChat(sender, text, isThinking = false) {
+    const messageElement = document.createElement('div');
+    // Using Tailwind's 'prose' classes can improve readability of rendered HTML.
+    // 'prose-invert' is for dark backgrounds, which our blue bubble has.
+    let cssClasses = 'p-3 rounded-lg max-w-lg mb-4';
+
+    if (sender === 'user') {
+cssClasses += ' bg-gray-200 text-gray-800 self-end ml-auto';
+// User input is always treated as plain text for security.
+messageElement.textContent = text;
+    } else {
+cssClasses += ' bg-blue-600 text-white self-start mr-auto prose prose-invert';
+if (isThinking) {
+    cssClasses += ' italic animate-pulse';
+    // The "Thinking..." message is also plain text.
+    messageElement.textContent = text;
+} else {
+    // 1. Parse the bot's Markdown response into an HTML string.
+    const rawHtml = marked.parse(text);
+    // 2. Sanitize the generated HTML to prevent XSS attacks.
+    const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+    // 3. Set innerHTML to let the browser render the formatting.
+    messageElement.innerHTML = sanitizedHtml;
+}
+    }
+
+    messageElement.className = cssClasses;
+    chatWindow.appendChild(messageElement);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return messageElement;
+}
+
+async function getOpenAiResponse(messages) {
+    const proxyApiURL = 'https://chatbot-backend-production-ec52.up.railway.app/api/chat';
+    const requestOptions = {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ messages: messages })
+    };
+
+    const response = await fetch(proxyApiURL, requestOptions);
+    if (!response.ok) {
+const errorData = await response.json();
+throw new Error(`API responded with status ${response.status}: ${errorData.error}`);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices.length > 0) {
+return data.choices[0].message.content.trim();
+    } else {
+return "I'm not sure how to respond to that.";
+    }
+}
