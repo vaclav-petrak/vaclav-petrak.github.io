@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sandbox Chatbot I</title>
     <!-- Tailwind CSS for styling -->
@@ -49,8 +50,36 @@
         const sendButton = document.getElementById('send-button');
         
         // This array will store the conversation history to send to OpenAI.
+        // --- Dynamic System Prompt Initialization ---
+
+        // Create a new Date object to get the current date
+        const today = new Date();
+
+        // Format the date as YYYY-MM-DD
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const dd = String(today.getDate()).padStart(2, '0');
+        const formattedDate = `${yyyy}-${mm}-${dd}`;
+
+        // Get the full day of the week (e.g., "Sunday")
+        const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+        // This is the system prompt from Option 1. You can swap it with your preferred option.
+        const systemPromptContent = `You are a specialized flight search assistant for Ryanair. Your primary purpose is to help users find flight information by using the 'find_flights' tool you have been given.
+
+        Today's date is ${dayOfWeek}, ${formattedDate}. Use this for any relative date queries like "tomorrow" or "next weekend".
+
+        Your instructions are:
+        1. When a user asks about flights, you MUST use the 'find_flights' tool.
+        2. Analyze the user's query to extract the necessary parameters for the tool: 'departureAirportIataCode', 'arrivalAirportIataCode' (if provided), and dates.
+        3. If essential information like the departure airport or a date is missing, you MUST ask the user for clarification before using the tool.
+        4. If a relative date is ambiguous (e.g., if today is Sunday, 'next Monday' could mean tomorrow or a week from tomorrow), you MUST ask the user to clarify which specific date they mean.
+        5. Once you receive data from the tool, present it to the user in a clear, easy-to-read summary. If there are multiple flights, always mention the cheapest options first.
+        6. Do not make up flight information. If the tool returns no results, inform the user that no flights were found for their criteria.`;
+
+        // Initialize the conversation history with the dynamic system prompt
         let conversationHistory = [
-            { role: "system", content: "You are a helpful assistant." }
+            { role: "system", content: systemPromptContent }
         ];
 
         // --- Event Listeners ---
@@ -180,8 +209,6 @@
                 return "I'm not sure how to respond to that.";
             }
         }
-
-
     </script>
 </body>
 </html>
