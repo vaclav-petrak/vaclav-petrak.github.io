@@ -4,34 +4,31 @@
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sandbox Chatbot I</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Sandbox Chatbot: Flight explorer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.1/dist/purify.min.js"></script>
+
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    <!-- Main chat container -->
     <div class="w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-xl flex flex-col h-[90vh]">
-        <!-- Header -->
         <div class="p-4 border-b border-gray-200">
-            <h1 class="text-2xl font-bold text-gray-800">Sandbox Chatbot I</h1>
-            <p class="text-sm text-gray-500">A minimalist chatbot using the OpenAI API</p>
+            <h1 class="text-2xl font-bold text-gray-800">Sandy, the Flight Explorer  ✈️</h1>
+            <p class="text-sm text-gray-500">A sandbox chatbot used for my experimentation</p>
         </div>
 
-        <!-- Chat messages window -->
         <div id="chat-window" class="flex-1 p-6 overflow-y-auto">
-            <!-- Messages will be added here dynamically -->
             <div class="bg-blue-100 text-blue-800 p-3 rounded-lg self-start max-w-lg mb-4">
-                Hello! I'm Sandbox Chatbot I. Send me a message to get started.
+                Hello! I'm Sandy, a sandbox chatbot. I am serving as a flight explorer. You can ask me about Ryanair flights. Send me a message to get started. 
             </div>
         </div>
 
-        <!-- Message input area -->
         <div class="p-4 border-t border-gray-200 bg-white">
             <div class="flex items-center space-x-3">
                 <input type="text" id="message-input" placeholder="Type your message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -44,28 +41,19 @@
 
     <script>
         // --- DOM Element References ---
-        // Get references to the important elements on the page.
         const chatWindow = document.getElementById('chat-window');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         
-        // This array will store the conversation history to send to OpenAI.
         // --- Dynamic System Prompt Initialization ---
-
-        // Create a new Date object to get the current date
         const today = new Date();
-
-        // Format the date as YYYY-MM-DD
         const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const formattedDate = `${yyyy}-${mm}-${dd}`;
-
-        // Get the full day of the week (e.g., "Sunday")
         const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
 
-        // This is the system prompt from Option 1. You can swap it with your preferred option.
-        const systemPromptContent = `You are a specialized flight search assistant for Ryanair. Your primary purpose is to help users find flight information by using the 'find_flights' tool you have been given.
+        const systemPromptContent = `You are a specialized flight search assistant for Ryanair. Your primary purpose is to help users find flight information by using the 'find_flights' tool you have been given. 
 
         Today's date is ${dayOfWeek}, ${formattedDate}. Use this for any relative date queries like "tomorrow" or "next weekend".
 
@@ -74,19 +62,19 @@
         2. Analyze the user's query to extract the necessary parameters for the tool: 'departureAirportIataCode', 'arrivalAirportIataCode' (if provided), and dates.
         3. If essential information like the departure airport or a date is missing, you MUST ask the user for clarification before using the tool.
         4. If a relative date is ambiguous (e.g., if today is Sunday, 'next Monday' could mean tomorrow or a week from tomorrow), you MUST ask the user to clarify which specific date they mean.
-        5. Once you receive data from the tool, present it to the user in a clear, easy-to-read summary. If there are multiple flights, always mention the cheapest options first.
-        6. Do not make up flight information. If the tool returns no results, inform the user that no flights were found for their criteria.`;
+        5. Once you receive data from the tool, present it to the user in a clear, easy-to-read summary. Use Markdown for formatting (e.g., bolding, lists) to improve readability. If there are multiple flights, always mention the cheapest options first.
+        6. Do not make up flight information. If the tool returns no results, inform the user that no flights were found for their criteria.
+        7. Round prices to nearst unit and add space as thousands separator e.g. price 1612.01 CZK should be 1 612 CZK 
+        8. If someone asks about flights from a country or area, think analyze first if the cities are in the country. (E.g If somenone asks about flights to Greece, present Skiathos, Corfu, etc. (if the flight is relevant))
+        8. You are allowed to answer other questions. You are not limited to flight related questions. 
+        `;
 
-        // Initialize the conversation history with the dynamic system prompt
         let conversationHistory = [
             { role: "system", content: systemPromptContent }
         ];
 
         // --- Event Listeners ---
-        // Listen for a click on the "Send" button.
         sendButton.addEventListener('click', sendMessage);
-        
-        // Listen for the "Enter" key press in the message input field.
         messageInput.addEventListener('keyup', (event) => {
             if (event.key === 'Enter') {
                 sendMessage();
@@ -94,46 +82,20 @@
         });
 
         // --- Main Functions ---
-
-        /**
-         * Handles sending the message. It gets the user input,
-         * displays the user's message, and calls the OpenAI API.
-         */
         async function sendMessage() {
             const messageText = messageInput.value.trim();
+            if (messageText === '') return;
 
-            // 1. Validate Input
-            if (messageText === '') {
-                return; // Don't send empty messages.
-            }
-
-            // 2. Display User Message
-            // Show the user's message in the chat window immediately.
             addMessageToChat('user', messageText);
-            
-            // Add user's message to conversation history
             conversationHistory.push({ role: "user", content: messageText });
-
-            // Clear the input field for the next message.
             messageInput.value = '';
 
-            // 3. Get Bot Response
             try {
-                // Show a "thinking" indicator
                 const thinkingIndicator = addMessageToChat('bot', 'Thinking...', true);
-
-                // Call the function to get a response from OpenAI.
                 const botResponse = await getOpenAiResponse(conversationHistory);
-
-                // Remove the "thinking" indicator
                 thinkingIndicator.remove();
-
-                // Display the bot's actual response.
                 addMessageToChat('bot', botResponse);
-                
-                // Add bot's response to conversation history
                 conversationHistory.push({ role: "assistant", content: botResponse });
-
             } catch (error) {
                 console.error("Error fetching from OpenAI:", error);
                 addMessageToChat('bot', 'Sorry, I ran into an error. Please check the console for details.');
@@ -141,7 +103,7 @@
         }
 
         /**
-         * Adds a new message to the chat window.
+         * MODIFIED: Adds a new message to the chat window, rendering Markdown for bot messages.
          * @param {string} sender - Who sent the message ('user' or 'bot').
          * @param {string} text - The message content.
          * @param {boolean} isThinking - Optional flag for the thinking indicator.
@@ -149,60 +111,51 @@
          */
         function addMessageToChat(sender, text, isThinking = false) {
             const messageElement = document.createElement('div');
+            // Using Tailwind's 'prose' classes can improve readability of rendered HTML.
+            // 'prose-invert' is for dark backgrounds, which our blue bubble has.
             let cssClasses = 'p-3 rounded-lg max-w-lg mb-4';
 
-            // Apply different styles based on the sender.
             if (sender === 'user') {
                 cssClasses += ' bg-gray-200 text-gray-800 self-end ml-auto';
+                // User input is always treated as plain text for security.
+                messageElement.textContent = text;
             } else {
-                cssClasses += ' bg-blue-600 text-white self-start mr-auto';
+                cssClasses += ' bg-blue-600 text-white self-start mr-auto prose prose-invert';
                 if (isThinking) {
-                   // Special style for the "Thinking..." bubble
-                cssClasses += ' italic animate-pulse';
+                    cssClasses += ' italic animate-pulse';
+                    // The "Thinking..." message is also plain text.
+                    messageElement.textContent = text;
+                } else {
+                    // 1. Parse the bot's Markdown response into an HTML string.
+                    const rawHtml = marked.parse(text);
+                    // 2. Sanitize the generated HTML to prevent XSS attacks.
+                    const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+                    // 3. Set innerHTML to let the browser render the formatting.
+                    messageElement.innerHTML = sanitizedHtml;
                 }
             }
 
             messageElement.className = cssClasses;
-            messageElement.textContent = text;
-            
             chatWindow.appendChild(messageElement);
-
-            // Automatically scroll to the bottom to see the latest message.
             chatWindow.scrollTop = chatWindow.scrollHeight;
             return messageElement;
         }
 
-        /**
-         * Fetches a response from YOUR secure backend proxy.
-         * @param {Array} messages - The conversation history.
-         * @returns {Promise<string>} The chatbot's response text.
-         */
         async function getOpenAiResponse(messages) {
-            // URL of YOUR deployed Railway server. Replace this with your actual URL.
             const proxyApiURL = 'https://chatbot-backend-production-ec52.up.railway.app/api/chat';
-
             const requestOptions = {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                    // NO 'Authorization' header here! The key is on the server.
-                },
-                body: JSON.stringify({
-                    // Pass the messages in the format your server expects
-                    messages: messages
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: messages })
             };
 
             const response = await fetch(proxyApiURL, requestOptions);
-
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(`API responded with status ${response.status}: ${errorData.error}`);
             }
 
             const data = await response.json();
-
-            // Extract the assistant's reply from the response.
             if (data.choices && data.choices.length > 0) {
                 return data.choices[0].message.content.trim();
             } else {
