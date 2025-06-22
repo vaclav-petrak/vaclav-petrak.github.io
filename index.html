@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandbox Chatbot I</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <!-- Main chat container -->
+    <div class="w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-xl flex flex-col h-[90vh]">
+        <!-- Header -->
+        <div class="p-4 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-800">Sandbox Chatbot I</h1>
+            <p class="text-sm text-gray-500">A minimalist chatbot using the OpenAI API</p>
+        </div>
+
+        <!-- Chat messages window -->
+        <div id="chat-window" class="flex-1 p-6 overflow-y-auto">
+            <!-- Messages will be added here dynamically -->
+            <div class="bg-blue-100 text-blue-800 p-3 rounded-lg self-start max-w-lg mb-4">
+                Hello! I'm Sandbox Chatbot I. Send me a message to get started.
+            </div>
+        </div>
+
+        <!-- Message input area -->
+        <div class="p-4 border-t border-gray-200 bg-white">
+            <div class="flex items-center space-x-3">
+                <input type="text" id="message-input" placeholder="Type your message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                <button id="send-button" class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out transform hover:scale-105">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        // Get references to the important elements on the page.
+        const chatWindow = document.getElementById('chat-window');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        
+        // This array will store the conversation history to send to OpenAI.
+        let conversationHistory = [
+            { role: "system", content: "You are a helpful assistant." }
+        ];
+
+        // --- Event Listeners ---
+        // Listen for a click on the "Send" button.
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Listen for the "Enter" key press in the message input field.
+        messageInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // --- Main Functions ---
+
+        /**
+         * Handles sending the message. It gets the user input,
+         * displays the user's message, and calls the OpenAI API.
+         */
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+
+            // 1. Validate Input
+            if (messageText === '') {
+                return; // Don't send empty messages.
+            }
+
+            // 2. Display User Message
+            // Show the user's message in the chat window immediately.
+            addMessageToChat('user', messageText);
+            
+            // Add user's message to conversation history
+            conversationHistory.push({ role: "user", content: messageText });
+
+            // Clear the input field for the next message.
+            messageInput.value = '';
+
+            // 3. Get Bot Response
+            try {
+                // Show a "thinking" indicator
+                const thinkingIndicator = addMessageToChat('bot', 'Thinking...', true);
+
+                // Call the function to get a response from OpenAI.
+                const botResponse = await getOpenAiResponse(conversationHistory);
+
+                // Remove the "thinking" indicator
+                thinkingIndicator.remove();
+
+                // Display the bot's actual response.
+                addMessageToChat('bot', botResponse);
+                
+                // Add bot's response to conversation history
+                conversationHistory.push({ role: "assistant", content: botResponse });
+
+            } catch (error) {
+                console.error("Error fetching from OpenAI:", error);
+                addMessageToChat('bot', 'Sorry, I ran into an error. Please check the console for details.');
+            }
+        }
+
+        /**
+         * Adds a new message to the chat window.
+         * @param {string} sender - Who sent the message ('user' or 'bot').
+         * @param {string} text - The message content.
+         * @param {boolean} isThinking - Optional flag for the thinking indicator.
+         * @returns {HTMLElement} The created message element.
+         */
+        function addMessageToChat(sender, text, isThinking = false) {
+            const messageElement = document.createElement('div');
+            let cssClasses = 'p-3 rounded-lg max-w-lg mb-4';
+
+            // Apply different styles based on the sender.
+            if (sender === 'user') {
+                cssClasses += ' bg-gray-200 text-gray-800 self-end ml-auto';
+            } else {
+                cssClasses += ' bg-blue-600 text-white self-start mr-auto';
+                if (isThinking) {
+                   // Special style for the "Thinking..." bubble
+                cssClasses += ' italic animate-pulse';
+                }
+            }
+
+            messageElement.className = cssClasses;
+            messageElement.textContent = text;
+            
+            chatWindow.appendChild(messageElement);
+
+            // Automatically scroll to the bottom to see the latest message.
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageElement;
+        }
+
+        /**
+         * Fetches a response from YOUR secure backend proxy.
+         * @param {Array} messages - The conversation history.
+         * @returns {Promise<string>} The chatbot's response text.
+         */
+        async function getOpenAiResponse(messages) {
+            // URL of YOUR deployed Railway server. Replace this with your actual URL.
+            const proxyApiURL = 'https://chatbot-backend-production-ec52.up.railway.app/api/chat';
+
+            const requestOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                    // NO 'Authorization' header here! The key is on the server.
+                },
+                body: JSON.stringify({
+                    // Pass the messages in the format your server expects
+                    messages: messages
+                })
+            };
+
+            const response = await fetch(proxyApiURL, requestOptions);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`API responded with status ${response.status}: ${errorData.error}`);
+            }
+
+            const data = await response.json();
+
+            // Extract the assistant's reply from the response.
+            if (data.choices && data.choices.length > 0) {
+                return data.choices[0].message.content.trim();
+            } else {
+                return "I'm not sure how to respond to that.";
+            }
+        }
+
+
+    </script>
+</body>
+</html>
