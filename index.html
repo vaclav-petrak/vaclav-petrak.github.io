@@ -64,8 +64,9 @@
             gap: 2rem;
         }
 
-        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        /* Adjusted minmax to 280px to prevent horizontal scroll on small devices */
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
         /* --- TYPOGRAPHY --- */
         h1, h2, h3 {
@@ -125,6 +126,7 @@
             font-weight: 600;
             color: var(--accent-primary);
             transition: all 0.3s ease-in-out;
+            white-space: nowrap; /* Prevents text wrap on mobile */
         }
         .cta-btn-nav:hover { background: var(--accent-primary); color: var(--bg-color); }
 
@@ -391,13 +393,22 @@
 
         /* Mobile Adjustments */
         @media (max-width: 768px) {
-            h1 { font-size: 2.5rem; }
+            /* Reduced padding for smaller screens */
+            .section-padding { padding: 60px 0; }
+            
+            h1 { font-size: 2.25rem; } /* Slightly smaller for fit */
+            h2 { font-size: 1.75rem; margin-bottom: 2rem; } /* Restore hierarchy */
+            
             .nav-links { display: none; } 
+            
             .blog-post { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
             .hero-graphic { width: 80%; opacity: 0.1; }
             
             .bio-grid { grid-template-columns: 1fr; gap: 2rem; }
-            .carousel-card { min-width: 300px; }
+            
+            /* Use viewport width for carousel items on mobile instead of fixed pixel width */
+            .carousel-card { min-width: 85vw; }
+            
             .nav-btn { display: none; }
         }
     </style>
@@ -421,7 +432,7 @@
     <div class="hero-graphic"></div>
     <div class="hero-content">
         <h1>Making your complex work <br><span class="gradient-text">easy to understand.</span></h1>
-        <p class="subtitle">I help you bridge the gap between deep complexity and clear audience understanding. I provide the visual and analytical support needed to ensure your work is recognized.</p>
+        <p class="subtitle">I help you bridge the gap between deep complexity and clear audience understanding. I provide the visual clarity and analytical support needed to ensure your work is recognized.</p>
         <a href="#about" class="primary-btn">View Expertise</a>
     </div>
 </section>
