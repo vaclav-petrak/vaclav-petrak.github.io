@@ -381,14 +381,72 @@
             margin-top: 50px;
         }
 
-        /* --- FOOTER --- */
+/* --- EXPANDED FOOTER DESIGN --- */
         footer {
-            padding: 40px 0;
-            text-align: center;
-            background: var(--card-bg);
-            color: var(--text-muted);
+            background: var(--bg-color); /* Darker than the contact card for contrast */
             border-top: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.9rem;
+            padding-top: 60px;
+            padding-bottom: 30px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 4rem;
+            text-align: left; /* Reset text align */
+        }
+
+        .footer-col h4 {
+            color: var(--text-main);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            transition: 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-primary);
+            padding-left: 5px; /* Subtle movement on hover */
+        }
+
+        .footer-address {
+            font-style: normal;
+            line-height: 1.8;
+        }
+
+        .ico-box {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            color: var(--accent-secondary);
+        }
+
+        .copyright-bar {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+            opacity: 0.6;
+        }
+
+        /* Mobile adjustment for footer */
+        @media (max-width: 768px) {
+            .footer-grid { gap: 2rem; }
         }
 
         /* Mobile Adjustments */
@@ -590,17 +648,52 @@
     </section>
     -->
 
-    <section id="contact" class="section-padding contact-section">
+<section id="contact" class="section-padding contact-section">
         <div class="container">
-            <h2>Ready to see your data clearly?</h2>
-            <p class="subtitle" style="margin: 0 auto 2rem auto;">I am currently accepting new projects for Q4. Let's discuss how we can turn your data into your biggest asset.</p>
-            <a href="mailto:Václav@example.com" class="primary-btn">Schedule a Consultation</a>
+            <h2 class="gradient-text">Let's give your data the clarity it deserves.</h2>
+            <p class="subtitle" style="margin: 0 auto 2rem auto;">
+                Whether you have a complex dataset that needs decoding or a high-stakes presentation that needs structure, I can help you find the signal in the noise.
+            </p>
+            <a href="mailto:vaclav@petrak.io" class="primary-btn">Start a Conversation</a>
         </div>
-    </section>
+</section>
 
     <footer>
         <div class="container">
-            <p>&copy; 2025 Václav Petrák</p>
+            <div class="footer-grid">
+                
+                <div class="footer-col">
+                    <a href="#" class="logo" style="display:inline-block; margin-bottom: 1rem;">Václav<span> Petrák</span></a>
+                    <p style="max-width: 300px;">
+                        Data analysis, visualization, and strategic intelligence for science and business.
+                    </p>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Connect</h4>
+                    <ul class="footer-links">
+                        <li><a href="mailto:vaclav@petrak.io">vaclav@petrak.io</a></li>
+                        <li><a href="tel:+420725898390">+420 725 898 390</a></li>
+                        <li><a href="https://cz.linkedin.com/in/vaclav-petrak" target="_blank">LinkedIn Profile &#8599;</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Billing Details</h4>
+                    <address class="footer-address">
+                        Václav Petrák<br>
+                        5. května 1868<br>
+                        272 01 Kladno<br>
+                        Czech Republic
+                    </address>
+                    <span class="ico-box">IČO: 05916305</span>
+                </div>
+
+            </div>
+
+            <div class="copyright-bar">
+                &copy; 2025 Václav Petrák. All rights reserved.
+            </div>
         </div>
     </footer>
 
