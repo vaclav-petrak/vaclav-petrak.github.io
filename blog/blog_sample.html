@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Pareto Principle in Data Analysis | Václav Petrák</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #c084fc;
+            --gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-code: 'JetBrains Mono', monospacae;
+        }
+
+        html { scroll-behavior: smooth; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased; 
+        }
+
+        a { text-decoration: none; color: inherit; transition: 0.3s; }
+        ul { list-style: none; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        
+        .article-container {
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 0 20px;
+        }
+
+        .section-padding { padding: 120px 0 60px; }
+
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3, h4 { line-height: 1.2; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+        h1 { font-size: 3rem; font-weight: 800; letter-spacing: -0.04em; }
+        h2 { font-size: 2rem; font-weight: 700; margin-top: 3rem; color: var(--text-main); }
+        h3 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; color: var(--accent-primary); }
+        p { margin-bottom: 1.5rem; color: #cbd5e1; font-size: 1.1rem; }
+
+        .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            padding: 20px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        nav .container { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.03em; }
+        .logo span { color: var(--accent-primary); }
+        .back-link { font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+        .back-link:hover { color: var(--accent-primary); transform: translateX(-5px); }
+
+        /* --- BLOG ELEMENTS --- */
+        .article-header { text-align: center; margin-bottom: 3rem; }
+        .meta-tag {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-primary);
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+        .meta-date { color: var(--text-muted); font-size: 0.95rem; margin-top: 1rem; display: block; }
+
+        .callout-box {
+            background: var(--card-bg);
+            border-left: 4px solid var(--accent-secondary);
+            padding: 2rem;
+            border-radius: 0 16px 16px 0;
+            margin: 2.5rem 0;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-left: 4px solid var(--accent-secondary);
+        }
+        .callout-box h4 { margin-bottom: 0.5rem; color: var(--accent-secondary); }
+        .callout-box p { margin-bottom: 0; font-size: 1rem; }
+
+        pre {
+            background: #0b1120;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow-x: auto;
+            margin: 2rem 0;
+        }
+        code { font-family: var(--font-code); font-size: 0.9rem; color: #e2e8f0; }
+        .keyword { color: var(--accent-secondary); }
+        .function { color: var(--accent-primary); }
+        .string { color: #a5f3fc; }
+        .comment { color: #64748b; font-style: italic; }
+
+        /* --- CHART CONTAINER --- */
+        .chart-wrapper {
+            background: var(--card-bg); /* Matches card background */
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin: 2rem 0;
+            position: relative;
+            height: 400px; /* Fixed height for consistency */
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .image-caption {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            margin: 4rem 0;
+        }
+
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            background: var(--card-bg);
+            color: var(--text-muted);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.9rem;
+            margin-top: 5rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .section-padding { padding-top: 100px; }
+            .chart-wrapper { height: 300px; } /* Smaller chart on mobile */
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="container">
+            <a href="index.html" class="logo">Václav<span> Petrák</span></a>
+            <a href="index.html" class="back-link">&#8592; Back to Home</a>
+        </div>
+    </nav>
+
+    <article class="section-padding">
+        <div class="article-container">
+            
+            <div class="article-header">
+                <span class="meta-tag">Statistical Modeling</span>
+                <h1 class="gradient-text">The Pareto Principle: Finding the Signal in the Noise</h1>
+                <span class="meta-date">October 12, 2024 • 6 min read</span>
+            </div>
+
+            <p>In data analysis, we are often obsessed with completeness. We want to clean every row, account for every outlier, and visualize every variable. But the reality of complex systems—whether they are business revenue streams, software bugs, or biological datasets—is that they are rarely distributed evenly.</p>
+            <p>Most datasets follow a power law distribution. This is where the <strong>Pareto Principle</strong> (or the 80/20 rule) becomes not just a theory, but a survival mechanism for analysts.</p>
+
+            <div class="callout-box">
+                <h4>What is the Pareto Principle?</h4>
+                <p>Originally observed by economist Vilfredo Pareto in 1896, the principle states that roughly 80% of consequences come from 20% of causes. Pareto noticed that 80% of Italy's land was owned by 20% of the population. He then noticed the same ratio in his garden: 20% of the peapods produced 80% of the peas.</p>
+            </div>
+
+            <h2>The Mathematics of Inequality</h2>
+            <p>While we colloquially call it "80/20," the math is governed by the Pareto distribution. Mathematically, the probability density function is represented as a power law. In simple terms? A small number of high-frequency events account for the majority of the volume.</p>
+
+            <h2>Applying Pareto to Data Strategy</h2>
+            <p>When I work with clients on exploratory data analysis (EDA), the first step is often identifying the "Vital Few" versus the "Trivial Many." This is crucial for resource allocation.</p>
+            <p>Here is an interactive Pareto Chart representing a recent retail optimization project. Hover over the bars to see the exact figures.</p>
+
+            <div class="chart-wrapper">
+    <canvas id="paretoChart"></canvas>
+</div>
+<div class="image-caption">
+    Figure 1: A dual-axis Pareto analysis. The bars (left axis) show individual contribution, while the line (right axis) shows cumulative impact. Note that the first three SKUs account for nearly 80% of total revenue.
+</div>
+
+<p>As you can see in the visualization, focusing optimization efforts on just the first 3 items yields an impact on nearly 80% of the total revenue. Optimizing the remaining long tail yields diminishing returns.</p>
+
+            <h3>Python Implementation</h3>
+            <p>If you are using Pandas to identify your top contributors, you don't need complex tools. Here is a snippet I use to quickly flag the top 20% of any dataset:</p>
+
+<pre><code><span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+<span class="comment"># Load your dataset</span>
+df = pd.read_csv(<span class="string">'sales_data.csv'</span>)
+
+<span class="comment"># Calculate cumulative percentage</span>
+df = df.sort_values(by=<span class="string">'revenue'</span>, ascending=<span class="keyword">False</span>)
+df[<span class="string">'cumulative_percent'</span>] = df[<span class="string">'revenue'</span>].cumsum() / df[<span class="string">'revenue'</span>].sum()
+
+<span class="comment"># Filter for the "Vital Few" (The 80% impact)</span>
+vital_few = df[df[<span class="string">'cumulative_percent'</span>] <= <span class="number">0.80</span>]
+
+<span class="function">print</span>(f<span class="string">"Count of vital items: {len(vital_few)}"</span>)</code></pre>
+
+            <hr>
+
+            <h3>Conclusion</h3>
+            <p>Effective data science is rarely about analyzing everything with equal depth. It is about identifying the levers that move the world. By applying the Pareto Principle to your datasets, you stop drowning in noise and start providing actionable intelligence.</p>
+
+            <div style="margin-top: 4rem;">
+                <p style="font-size: 0.9rem; color: var(--text-muted); text-align: center;">
+                    <em>Need help identifying the "Vital Few" in your business data? <a href="index.html#contact" style="color: var(--accent-primary); text-decoration: underline;">Get in touch.</a></em>
+                </p>
+            </div>
+
+        </div>
+    </article>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Václav Petrák. All rights reserved.</p>
+        </div>
+    </footer>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('paretoChart').getContext('2d');
+
+        // Data Preparation
+        const labels = ['SKU-101', 'SKU-842', 'SKU-390', 'SKU-112', 'SKU-550', 'SKU-991', 'SKU-202', 'SKU-303'];
+        const dataValues = [45000, 32000, 15000, 6000, 4000, 2000, 1000, 500];
+        
+        // Calculate Cumulative Percentage
+        const total = dataValues.reduce((a, b) => a + b, 0);
+        let accumulator = 0;
+        const cumulativeData = dataValues.map(value => {
+            accumulator += value;
+            return (accumulator / total) * 100;
+        });
+
+        // Define Theme Colors for reuse
+        const colorBarAccent = '#38bdf8'; // Cyan for bars and left axis
+        const colorLineAccent = '#c084fc'; // Purple for line and right axis
+        const colorTextMuted = '#94a3b8';
+        const colorGridSubtle = 'rgba(255, 255, 255, 0.03)';
+
+        // Chart Configuration
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        // The Line Dataset (Cumulative)
+                        label: 'Cumulative Impact (%)',
+                        data: cumulativeData,
+                        type: 'line',
+                        borderColor: colorLineAccent,
+                        backgroundColor: colorLineAccent,
+                        borderWidth: 3,
+                        pointRadius: 6, // Larger points to emphasize milestones
+                        pointBackgroundColor: colorLineAccent,
+                        pointBorderColor: '#1e293b', // Match card bg for "cutout" look
+                        pointBorderWidth: 2,
+                        yAxisID: 'y_cumulative',
+                        tension: 0 // Straight lines for analytical precision
+                    },
+                    {
+                        // The Bar Dataset (Revenue)
+                        label: 'Individual Revenue ($)',
+                        data: dataValues,
+                        backgroundColor: colorBarAccent,
+                        hoverBackgroundColor: '#0ea5e9',
+                        borderRadius: 4,
+                        yAxisID: 'y_revenue',
+                        barPercentage: 0.7,
+                        categoryPercentage: 0.8,
+                        order: 2 // Ensure bars are behind the line
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                layout: {
+                    padding: { top: 20, right: 20, left: 10, bottom: 10 }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: { color: colorTextMuted, boxWidth: 15, usePointStyle: true, font: { family: 'Inter', size: 12 } }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Revenue Concentration Analysis',
+                        color: '#f8fafc',
+                        font: { family: 'Inter', size: 16, weight: '600' },
+                        padding: { bottom: 20 },
+                        align: 'start'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#cbd5e1',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.dataset.type === 'line') {
+                                    label += Math.round(context.parsed.y) + '%';
+                                } else {
+                                    label += '$' + context.parsed.y.toLocaleString();
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false }, // Clean look
+                        ticks: { color: colorTextMuted, font: { family: 'Inter', size: 11 } },
+                        title: {
+                            display: true,
+                            text: 'Product SKUs (Sorted by Volume)',
+                            color: colorTextMuted,
+                            font: { family: 'Inter', size: 12, weight: 500 },
+                            padding: { top: 10 }
+                        }
+                    },
+                    // Left Axis (Revenue - Cyan)
+                    y_revenue: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: colorGridSubtle, drawBorder: false },
+                        ticks: { 
+                            color: colorBarAccent, // Color coded ticks
+                            font: { family: 'JetBrains Mono', size: 11 }, // Mono font for numbers
+                            callback: function(value) { return '$' + value / 1000 + 'k'; } // Abbreviate large numbers
+                        },
+                        title: {
+                            display: true,
+                            text: 'Revenue Volume',
+                            color: colorBarAccent, // Color coded title
+                            font: { family: 'Inter', size: 12, weight: 600 }
+                        }
+                    },
+                    // Right Axis (Cumulative - Purple)
+                    y_cumulative: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { display: false }, // No gridlines for secondary axis to reduce clutter
+                        min: 0,
+                        max: 102, // Slight padding at top
+                        ticks: { 
+                            color: colorLineAccent, // Color coded ticks
+                            font: { family: 'JetBrains Mono', size: 11 },
+                            callback: function(value) { return value + "%" }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Cumulative Share',
+                            color: colorLineAccent, // Color coded title
+                            font: { family: 'Inter', size: 12, weight: 600 }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+</body>
+</html>
