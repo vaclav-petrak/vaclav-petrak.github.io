@@ -76,6 +76,11 @@ h3 { font-size: 1.5rem; font-weight: 600; }
     color: var(--accent-primary); 
 }
 
+.subtitle strong {
+    color: var(--text-main); /* Turns the text white (#f8fafc) */
+    font-weight: 700;        /* Enforces a heavy bold weight */
+}
+
 .subtitle {
     color: var(--text-muted);
     font-size: 1.25rem;
