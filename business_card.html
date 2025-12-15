@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Václav Petrák Business Card v3</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&display=swap');
+
+    :root {
+        /* Colors from style.css */
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #bdcfe9;
+        --accent-primary: #38bdf8;
+        --accent-secondary: #c084fc;
+        --gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    }
+
+    body {
+        background-color: #ccc;
+        font-family: 'Inter', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 40px;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* CARD CONTAINER */
+    .business-card {
+        /* 3.5 x 2 inches scaling */
+        width: 450px; 
+        height: 257px;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        display: flex;
+        box-sizing: border-box;
+    }
+
+    /* --- SHARED GRAPHIC ELEMENT (The Lines) --- */
+    .graphic-lines {
+        position: absolute;
+        top: 0; bottom: 0; left: 0; right: 0;
+        z-index: 0;
+        opacity: 0.15;
+        background: repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            var(--accent-primary) 10px,
+            var(--accent-primary) 11px
+        );
+        mask-image: linear-gradient(to left, black, transparent);
+        -webkit-mask-image: linear-gradient(to left, black, transparent);
+    }
+
+    /* --- FRONT SIDE --- */
+    .card-front {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .card-front .graphic-lines {
+        left: 20%; 
+    }
+
+    .logo {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.04em; /* from style.css h1 */
+        z-index: 2;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .logo span {
+        background: var(--gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: var(--accent-primary);
+    }
+
+    .tagline {
+        /* INCREASED SIZE per request */
+        font-size: 1.15rem; 
+        color: var(--text-main); /* Changed to brighter text for impact */
+        font-weight: 300;
+        z-index: 2;
+        max-width: 90%;
+        line-height: 1.35;
+    }
+
+    /* --- BACK SIDE --- */
+    .card-back {
+        padding: 0; /* Removing padding to control grid areas */
+        display: flex;
+        flex-direction: row;
+    }
+
+    /* Left Column: Contact */
+    .col-contact {
+        width: 55%;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Right Column: Services */
+    .col-services {
+        width: 45%;
+        background-color: rgba(255,255,255,0.03); /* Slight tint to separate areas */
+        padding: 30px 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-left: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+    }
+
+    .title {
+        margin-top: 5px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--accent-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .contact-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 400;
+        white-space: nowrap;
+    }
+
+    .icon {
+        width: 14px;
+        height: 14px;
+        stroke: var(--accent-primary);
+        stroke-width: 2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.8;
+        flex-shrink: 0;
+    }
+
+    /* Services List Styling */
+    .services-header {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+
+    .services-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px; /* Space between items */
+    }
+
+    .service-item {
+        font-size: 0.7rem;
+        color: var(--text-main);
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        line-height: 1.2;
+    }
+
+    .service-num {
+        color: var(--accent-primary);
+        font-weight: 700;
+        font-size: 0.6rem;
+        min-width: 15px;
+    }
+
+</style>
+</head>
+<body>
+
+    <div class="business-card card-front">
+        <div class="graphic-lines"></div>
+        <div class="logo">Václav <span>Petrák</span></div>
+        <div class="tagline">Making your complex data easy to understand</div> 
+       
+    </div>
+
+    <div class="business-card card-back">
+        
+        <div class="col-contact">
+            <div>
+                <div class="name">Václav Petrák</div>
+                <div class="title">Data Specialist</div>
+            </div>
+
+            <div class="contact-group">
+                <div class="contact-item">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    vaclav@petrak.io
+                </div>
+                <div class="contact-item">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    +420 725 898 390
+                </div>
+                <div class="contact-item">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    www.petrak.io
+                </div>
+            </div>
+        </div>
+
+        <div class="col-services">
+            <div class="services-header">Services</div>
+            <ul class="services-list">
+                <li class="service-item"><span class="service-num">01</span> Exploratory Analysis</li>
+                <li class="service-item"><span class="service-num">02</span> Presentation Design</li>
+                <li class="service-item"><span class="service-num">03</span> Data Visualization</li>
+                <li class="service-item"><span class="service-num">04</span> Open Source Intelligence</li>
+                <li class="service-item"><span class="service-num">05</span> Statistical Modeling</li>
+            </ul>
+        </div>
+
+    </div>
+
+</body>
+</html>
