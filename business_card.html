@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Václav Petrák Business Card v3</title>
+<title>Václav Petrák Business Card v3 (Rounded)</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&display=swap');
 
@@ -37,7 +37,11 @@
         background-color: var(--bg-color);
         color: var(--text-main);
         position: relative;
+        border-radius: 20px; 
+        
+        /* overflow: hidden is critical here so the inner content clips to the rounded corners */
         overflow: hidden;
+        
         box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         display: flex;
         box-sizing: border-box;
@@ -91,7 +95,7 @@
 
     .tagline {
         /* INCREASED SIZE per request */
-        font-size: 1.15rem; 
+        font-size: 1.25rem; 
         color: var(--text-main); /* Changed to brighter text for impact */
         font-weight: 300;
         z-index: 2;
@@ -215,7 +219,7 @@
     <div class="business-card card-front">
         <div class="graphic-lines"></div>
         <div class="logo">Václav <span>Petrák</span></div>
-        <div class="tagline">Making your complex data easy to understand</div> 
+        <div class="tagline">Making your data<br>easy to understand</div> 
        
     </div>
 
@@ -237,7 +241,7 @@
                     +420 725 898 390
                 </div>
                 <div class="contact-item">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     www.petrak.io
                 </div>
             </div>
@@ -250,7 +254,7 @@
                 <li class="service-item"><span class="service-num">02</span> Presentation Design</li>
                 <li class="service-item"><span class="service-num">03</span> Data Visualization</li>
                 <li class="service-item"><span class="service-num">04</span> Open Source Intelligence</li>
-                <li class="service-item"><span class="service-num">05</span> Statistical Modeling</li>
+                <li class="service-item"><span class="service-num">05</span> Predcitve Modeling</li>
             </ul>
         </div>
 
