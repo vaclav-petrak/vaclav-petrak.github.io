@@ -4,8 +4,8 @@
     --card-bg: #1e293b;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --accent-primary: #38bdf8; /* Cyan */
-    --accent-secondary: #c084fc; /* Purple */
+    --accent-primary: #09A8EC; /* Cyan */
+    --accent-secondary: #9179CD; /* Purple */
     --gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
@@ -157,7 +157,7 @@ nav .container {
 
 .primary-btn {
     display: inline-block;
-    background: var(--gradient);
+    background: var(--accent-primary);
     color: white;
     padding: 16px 36px;
     border-radius: 50px;

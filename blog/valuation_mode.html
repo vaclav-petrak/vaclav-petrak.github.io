@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alicanto Valuation</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 1. VARIABLES & RESET (Matched to style.css) --- */
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8; /* Cyan */
+            --accent-secondary: #c084fc; /* Purple */
+            --gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            
+            --success: #34d399;
+            --danger: #f87171;
+            
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --border-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased; 
+        }
+
+        /* HEADER */
+        header {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            max-width: 1200px;
+        }
+
+        .logo-svg {
+            height: 60px;
+            width: auto;
+        }
+
+        header h1 { 
+            margin: 0; 
+            font-weight: 800; 
+            letter-spacing: -0.04em;
+            font-size: 2rem;
+            line-height: 1.1;
+        }
+        
+        header p { 
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: var(--accent-primary);
+            margin-top: 0.2rem; 
+            font-size: 0.9rem; 
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1200px;
+            margin: 3rem auto;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 2rem;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        /* CARDS (Matched to .service-card) */
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255,255,255,0.03);
+            margin-bottom: 1.5rem;
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--text-main);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            text-transform: uppercase;
+        }
+
+        /* FORM ELEMENTS */
+        .form-group { margin-bottom: 1.5rem; }
+        
+        label { 
+            display: block; 
+            font-weight: 600; 
+            font-size: 0.9rem; 
+            margin-bottom: 0.5rem; 
+            color: var(--text-main);
+        }
+        
+        .sub-label { 
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            font-weight: 400; 
+            margin-bottom: 0.8rem; 
+            display: block;
+        }
+        
+        select, input[type="number"] {
+            width: 100%; 
+            padding: 12px 16px; 
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-family: var(--font-main); 
+            font-size: 0.95rem; 
+            color: var(--text-main);
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+        }
+
+        /* Custom Dropdown Arrow Fix for dark mode */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+        
+        /* Radio Button Groups */
+        .radio-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        
+        .radio-label {
+            flex: 1; 
+            padding: 12px; 
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-align: center; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        
+        .radio-label:hover { 
+            border-color: var(--accent-primary); 
+            color: var(--text-main);
+        }
+        
+        input[type="radio"]:checked + .radio-label {
+            background: var(--gradient); 
+            color: white; 
+            border: 1px solid transparent; 
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+        input[type="radio"] { display: none; }
+
+        /* Range Slider */
+        input[type=range] { 
+            width: 100%; 
+            margin: 15px 0; 
+            accent-color: var(--accent-primary);
+            cursor: pointer;
+            background: transparent;
+        }
+
+        /* REVENUE GRID */
+        .rev-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .rev-box {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .rev-box label { font-size: 0.8rem; margin-bottom: 8px; color: var(--text-muted); }
+        .rev-box .multiplier-tag {
+            float: right; 
+            font-size: 0.75rem; 
+            color: var(--accent-primary); 
+            background: rgba(56, 189, 248, 0.1);
+            padding: 2px 6px; 
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        /* RESULTS PANEL - REVISED (TONED DOWN) */
+        .results-panel { position: sticky; top: 2rem; }
+        
+        .valuation-box {
+            background: rgba(30, 41, 59, 0.7); /* Subtle dark background */
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            text-align: left; 
+            margin-bottom: 1.5rem; 
+            border: 1px solid rgba(56, 189, 248, 0.2); /* Slight accent border */
+            border-left: 4px solid var(--accent-primary); /* Left accent bar */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .valuation-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .valuation-value { 
+            font-size: 2.8rem; /* Reduced from 3.5rem */
+            font-weight: 800; 
+            margin: 0.25rem 0 0.5rem 0; 
+            line-height: 1;
+            letter-spacing: -0.03em;
+            /* Gradient Text Effect */
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: var(--accent-primary); /* Fallback */
+        }
+        
+        .valuation-sub {
+            font-size: 0.85rem; 
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+
+        /* LOG LIST */
+        .log-list { list-style: none; padding: 0; margin: 0; }
+        .log-item {
+            padding: 0.85rem 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            font-size: 0.9rem;
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+        }
+        .log-val { font-weight: 700; font-family: monospace; font-size: 1rem; }
+        .positive { color: var(--success); }
+        .negative { color: var(--danger); }
+        .neutral { color: var(--text-muted); }
+        
+        .log-total {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--accent-primary);
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* CHECKBOXES */
+        .checkbox-item {
+            display: flex; align-items: center; 
+            padding: 1rem; 
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px; 
+            cursor: pointer; margin-bottom: 0.8rem;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+        .checkbox-item:hover { 
+            border-color: var(--accent-primary); 
+            background: rgba(255, 255, 255, 0.05); 
+            color: var(--text-main);
+        }
+        
+        .checkbox-item input { 
+            margin-right: 15px; 
+            width: 18px; height: 18px; 
+            accent-color: var(--accent-primary); 
+        }
+
+        /* BASE VALUE DISPLAY */
+        #baseValDisplay {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 1.25rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Dynamic Labels */
+        #trlLabel { color: var(--accent-primary) !important; font-weight: 700 !important; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <svg class="logo-svg" viewBox="0 0 316.95 195.55" xmlns="http://www.w3.org/2000/svg">
+            <g>
+                <path fill="#f8fafc" d="M210.37,73.48h0c2.88,0,4.24.22,4.68.31,2.97.62,6.9,2.27,10.99,4.31-1.77.42-4.64,1.36-8.09,3.41-.06.03-.13.07-.21.11-1.38.69-4.6,2.3-6.92,5.5-7.35,10.13-22.97,34.18-27.19,40.71l-58.44,29.04,42.96-67.43c12.75-6.41,31.63-15.07,36.94-15.74.41-.05,2.69-.22,5.28-.22M210.37,66.48c-2.83,0-5.45.19-6.15.28-9.27,1.17-40.94,17.31-40.94,17.31l-57.52,90.28,82.71-41.1s19.68-30.51,28.02-42.02c1.61-2.22,4.23-3.22,4.96-3.65,4.23-2.53,7.13-2.85,7.13-2.85l20.66-1.11s-21.08-14.25-32.75-16.69c-1.67-.35-3.96-.46-6.12-.46h0Z"/>
+                <path fill="#f8fafc" d="M80.21,71.94l98.35,58.45c-6,2.95-13.23,6.52-18.93,9.38l-65.59-39.51c-.85-.59-8.99-6.37-11.05-14.76-1.02-4.14-1.98-9.03-2.78-13.57M70.96,58.3s2.35,17.14,5.24,28.89c2.89,11.74,14.09,18.99,14.09,18.99l69.05,41.59c8.23-4.19,21.54-12.13,29.13-14.52.58-.18,2.44-3.77,2.44-3.77L70.96,58.3h0Z"/>
+                <path fill="#f8fafc" d="M61.12,32.19l107.91,63.37c2.22,1.48,8,5.62,11.02,8.92.24.67.89,3.14.89,10.19,0,2.82-.1,5.83-.24,8.76l-105.74-62.82c-.93-.64-8.99-6.41-11.04-14.75-1.03-4.17-1.99-9.11-2.8-13.67M51.88,18.64s2.35,17.14,5.24,28.89c2.89,11.74,14.09,18.99,14.09,18.99l114.51,68.09,1.37-.68c.64-10.72,2.1-29.62-1.49-33.74-4.28-4.91-12.86-10.57-12.86-10.57L51.88,18.64h0Z"/>
+            </g>
+            <circle cx="256.56" cy="85.13" r="7.32" fill="#38bdf8" />
+        </svg>
+        <div>
+            <h1>Alicanto Valuation</h1>
+            <p>Gold Nanocluster Fluorophores</p>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="inputs-panel">
+        
+        <div class="card">
+            <h3>1. Baseline Valuation</h3>
+            <div class="form-group">
+                <label>Pre-Money Base Valuation</label>
+                <span class="sub-label">Adjustable intial valuation</span>
+                <input type="range" id="baseValInput" min="200000" max="2000000" step="100000" value="500000">
+                <div style="text-align: right; font-weight: 800;" id="baseValDisplay">€500,000</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>2. IP Portfolio</h3>
+            
+            <label>🇪🇺 European Union (EU)    </label>
+            <div class="radio-group">
+                <input type="radio" name="ip_eu" id="eu_none" value="0" class="calc-trigger" checked>
+                <label for="eu_none" class="radio-label">None</label>
+                
+                <input type="radio" name="ip_eu" id="eu_pending" value="0.05" class="calc-trigger">
+                <label for="eu_pending" class="radio-label">Pending</label>
+                
+                <input type="radio" name="ip_eu" id="eu_granted" value="0.25" class="calc-trigger">
+                <label for="eu_granted" class="radio-label">Granted</label>
+            </div>
+
+            <label>🇺🇸 United States (US) </label>
+            <div class="radio-group">
+                <input type="radio" name="ip_us" id="us_none" value="0" class="calc-trigger" checked>
+                <label for="us_none" class="radio-label">None</label>
+                
+                <input type="radio" name="ip_us" id="us_pending" value="0.15" class="calc-trigger">
+                <label for="us_pending" class="radio-label">Pending</label>
+                
+                <input type="radio" name="ip_us" id="us_granted" value="0.35" class="calc-trigger">
+                <label for="us_granted" class="radio-label">Granted</label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>3. Tech Maturity</h3>
+            
+            <div class="form-group">
+                <label>TRL Level: <span id="trlLabel">4 (Lab Validated)</span></label>
+                <input type="range" id="trlInput" min="1" max="9" step="1" value="4" class="calc-trigger">
+                <span class="sub-label">Distinct factor for each step (1-9)</span>
+            </div>
+
+            <div class="form-group">
+                <label>Synthesis Scalability</label>
+                <select id="scalabilityInput" class="calc-trigger">
+                    <option value="lab_mg">Lab Scale (20 mg) </option>
+                    <option value="pilot_grams" selected>Pilot Scale (>100 mg)</option>
+                    <option value="industrial_kg">Industrial Scale (>10 g)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>4. Partnerships <span style="font-size:0.8em; opacity:0.6; text-transform:none;">(Select all that apply)</span></h3>
+            
+            <label class="checkbox-item">
+                <input type="checkbox" id="part_academic" class="calc-trigger">
+                <span>Academic Collaboration</span>
+            </label>
+            
+            <label class="checkbox-item">
+                <input type="checkbox" id="part_oem" class="calc-trigger">
+                <span>OEM or Industry Partnerships</span>
+            </label>
+            
+            <label class="checkbox-item">
+                <input type="checkbox" id="part_license" class="calc-trigger">
+                <span>Licensing Agreement</span>
+            </label>
+        </div>
+
+        <div class="card">
+            <h3>5. Team Structure</h3>
+            
+            <div class="form-group">
+                <label>Founding Team Roles</label>
+                <select id="teamRoles" class="calc-trigger">
+                    <option value="sci_only">Scientists Only</option>
+                    <option value="sci_com" selected>Scientists + Commercial Lead</option>
+                    <option value="sci_com_ops">Scientists + Commercial Lead + Operations</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Time Dedication (Academic Risk)</label>
+                <span class="sub-label">Are founders full-time or holding university posts?</span>
+                <select id="teamDedication" class="calc-trigger">
+                    <option value="part_time">Part-time involvement</option>
+                    <option value="mixed" selected>Mixed (some full-time)</option>
+                    <option value="full_time">Majority fully dedicated</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>6. Revenue Quality Mix (Annual €)</h3>
+            <p class="sub-label">Revenue contributes to valuation, but not all revenue is equal for investors.</p>
+            
+            <div class="rev-grid">
+                <div class="rev-box">
+                    <label>One-off Sales <span class="multiplier-tag">4×</span></label>
+                    <input type="number" id="rev_oneoff" value="0" min="0" step="1000" class="calc-trigger rev-input">
+                </div>
+                
+                <div class="rev-box">
+                    <label>Repeated / Distributor <span class="multiplier-tag">8×</span></label>
+                    <input type="number" id="rev_repeat" value="0" min="0" step="1000" class="calc-trigger rev-input">
+                </div>
+
+                <div class="rev-box">
+                    <label>OEM Contracts <span class="multiplier-tag">12×</span></label>
+                    <input type="number" id="rev_oem" value="0" min="0" step="1000" class="calc-trigger rev-input">
+                </div>
+
+                <div class="rev-box">
+                    <label>Licensing/IP <span class="multiplier-tag">15×</span></label>
+                    <input type="number" id="rev_license" value="0" min="0" step="1000" class="calc-trigger rev-input">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="results-panel">
+        <div class="valuation-box">
+            <div class="valuation-label">Estimated Pre-Money Valuation</div>
+            <div class="valuation-value" id="finalValuation">€0</div>
+            <div class="valuation-sub">Base Valuation × Factor Multiplier + Revenue Bonus</div>
+        </div>
+
+        <div class="card">
+            <h3>Calculated Factors</h3>
+            <ul class="log-list" id="logList">
+                </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DOM ELEMENTS ---
+    const baseValSlider = document.getElementById('baseValInput');
+    const baseValDisplay = document.getElementById('baseValDisplay');
+    const trlInput = document.getElementById('trlInput');
+    const trlLabel = document.getElementById('trlLabel');
+    const triggers = document.querySelectorAll('.calc-trigger');
+    const logList = document.getElementById('logList');
+    const finalValDisplay = document.getElementById('finalValuation');
+
+    // --- FACTOR DEFINITIONS ---
+    
+    // TRL: Unique factor for every step
+    const trlMap = {
+        1: { desc: "Basic Principles", val: 0.70 },
+        2: { desc: "Concept Formulated", val: 0.80 },
+        3: { desc: "Lab Proof of Concept", val: 0.90 },
+        4: { desc: "Lab Validated", val: 1.00 }, // Baseline
+        5: { desc: "Validated in Real Environment", val: 1.10 },
+        6: { desc: "Prototype Demo", val: 1.25 },
+        7: { desc: "System Prototype", val: 1.40 },
+        8: { desc: "System Qualified", val: 1.55 },
+        9: { desc: "Market Ready", val: 1.70 }
+    };
+
+    // Scalability
+    const scaleMap = {
+        'lab_mg': 0.90,
+        'pilot_grams': 1.10,
+        'industrial_kg': 1.30
+    };
+
+    // Team Roles
+    const roleMap = {
+        'sci_only': 0.85,
+        'sci_com': 1.00,
+        'sci_com_ops': 1.15
+    };
+
+    // Team Dedication
+    const dedicationMap = {
+        'part_time': 0.80,
+        'mixed': 1.00,
+        'full_time': 1.10
+    };
+
+    // --- EVENT LISTENERS ---
+    baseValSlider.addEventListener('input', (e) => {
+        baseValDisplay.textContent = formatCurrency(e.target.value);
+        calculate();
+    });
+
+    trlInput.addEventListener('input', (e) => {
+        trlLabel.textContent = `${e.target.value} (${trlMap[e.target.value].desc})`;
+        calculate();
+    });
+
+    triggers.forEach(el => {
+        el.addEventListener('change', calculate);
+        el.addEventListener('input', calculate);
+    });
+
+    // --- FORMATTER ---
+    function formatCurrency(num) {
+        return new Intl.NumberFormat('en-EU', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
+    }
+
+    // --- CALCULATION LOGIC ---
+    function calculate() {
+        let log = [];
+        let baseVal = parseFloat(baseValSlider.value);
+        let currentVal = baseVal;
+        let multiplier = 1.0;
+
+        // 1. IP (Radio Buttons)
+        let ipScore = 0;
+        const euVal = parseFloat(document.querySelector('input[name="ip_eu"]:checked').value);
+        ipScore += euVal;
+        if(euVal > 0) log.push({text: `IP: EU Protection`, val: `× ${(1+euVal).toFixed(2)}`, type: "positive"});
+        
+        const usVal = parseFloat(document.querySelector('input[name="ip_us"]:checked').value);
+        ipScore += usVal;
+        if(usVal > 0) log.push({text: `IP: US Protection`, val: `× ${(1+usVal).toFixed(2)}`, type: "positive"});
+
+        if (ipScore === 0) {
+            multiplier *= 0.8; 
+            log.push({ text: "IP: No Protection", val: "× 0.80", type: "negative" });
+        } else {
+            if(ipScore > 0.5) ipScore = 0.5; // Cap
+            multiplier *= (1 + ipScore);
+        }
+
+        // 2. TRL (Specific Step)
+        const trl = parseInt(trlInput.value);
+        const trlData = trlMap[trl];
+        multiplier *= trlData.val;
+        
+        let trlType = "neutral";
+        if(trlData.val > 1) trlType = "positive";
+        if(trlData.val < 1) trlType = "negative";
+        log.push({ text: `TRL ${trl}: ${trlData.desc}`, val: `× ${trlData.val.toFixed(2)}`, type: trlType });
+
+        // 3. Scalability
+        const scaleKey = document.getElementById('scalabilityInput').value;
+        const scaleMult = scaleMap[scaleKey];
+        multiplier *= scaleMult;
+        log.push({ text: `Scale: ${document.getElementById('scalabilityInput').options[document.getElementById('scalabilityInput').selectedIndex].text.split(' -')[0]}`, val: `× ${scaleMult.toFixed(2)}`, type: scaleMult >= 1 ? "positive" : "negative"});
+
+        // 4. Partnerships
+        let partMult = 0;
+        if(document.getElementById('part_academic').checked) { partMult += 0.05; log.push({text: "Part: Academic", val: "× 1.05", type: "positive"}); }
+        if(document.getElementById('part_oem').checked) { partMult += 0.20; log.push({text: "Part: OEM / Industry", val: "× 1.20", type: "positive"}); }
+        if(document.getElementById('part_license').checked) { partMult += 0.25; log.push({text: "Part: Licensing", val: "× 1.25", type: "positive"}); }
+        multiplier *= (1 + partMult);
+
+        // 5. Team
+        const roleKey = document.getElementById('teamRoles').value;
+        const roleMult = roleMap[roleKey];
+        multiplier *= roleMult;
+        if(roleMult !== 1.0) log.push({ text: `Team Role Structure`, val: `× ${roleMult.toFixed(2)}`, type: roleMult > 1 ? "positive" : "negative"});
+
+        const dedKey = document.getElementById('teamDedication').value;
+        const dedMult = dedicationMap[dedKey];
+        multiplier *= dedMult;
+        if(dedMult !== 1.0) log.push({ text: `Team Dedication`, val: `× ${dedMult.toFixed(2)}`, type: dedMult > 1 ? "positive" : "negative"});
+
+        // APPLY FACTOR MULTIPLIER
+        currentVal = currentVal * multiplier;
+        const factorVal = currentVal; // Snapshot before revenue
+
+        // Append Net Factor (Distinct Appearance)
+        const netFactor = (factorVal / baseVal).toFixed(2);
+        log.push({ text: `NET FACTOR MULTIPLIER`, val: `× ${netFactor}`, type: "total" });
+
+        // 6. REVENUE CALCULATOR
+        const revOneOff = parseFloat(document.getElementById('rev_oneoff').value) || 0;
+        const revRepeat = parseFloat(document.getElementById('rev_repeat').value) || 0;
+        const revOEM = parseFloat(document.getElementById('rev_oem').value) || 0;
+        const revLicense = parseFloat(document.getElementById('rev_license').value) || 0;
+        
+        let revenueBonus = 0;
+
+        if (revOneOff > 0) revenueBonus += (revOneOff * 4);
+        if (revRepeat > 0) revenueBonus += (revRepeat * 8);
+        if (revOEM > 0) revenueBonus += (revOEM * 12);
+        if (revLicense > 0) revenueBonus += (revLicense * 15);
+
+        if (revenueBonus > 0) {
+            currentVal += revenueBonus;
+            // CHANGED: Use type "total" to match Net Factor styling
+            log.push({ text: `Revenue Bonus (Sum)`, val: `+ ${formatCurrency(revenueBonus)}`, type: "total" });
+        }
+
+        // Rounding
+        currentVal = Math.round(currentVal / 50000) * 50000;
+        
+        finalValDisplay.textContent = formatCurrency(currentVal);
+        
+        renderLog(log);
+    }
+
+    function renderLog(logData) {
+        logList.innerHTML = '';
+        logData.forEach(item => {
+            const li = document.createElement('li');
+            
+            // Check for special "total" type
+            if (item.type === 'total') {
+                li.className = 'log-item log-total';
+                li.innerHTML = `<span>${item.text}</span><span>${item.val}</span>`;
+            } else {
+                li.className = 'log-item';
+                li.innerHTML = `<span>${item.text}</span><span class="log-val ${item.type}">${item.val}</span>`;
+            }
+            
+            logList.appendChild(li);
+        });
+    }
+
+    // Initial run
+    calculate();
+
+</script>
+
+</body>
+</html>
