@@ -374,8 +374,8 @@
   };
 
   var state = {
-    init: null, home: null, dueFilter: 'all', participants: [], participantId: null, pickerMode: 'checkup',
-    form: null, returnTo: 'home', saving: false, dirty: false
+    init: null, home: null, dueFilter: 'all', participants: [], nextId: '', participantId: null, pickerMode: 'checkup',
+    form: null, returnTo: 'home', saving: false, dirty: false, view: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -507,6 +507,7 @@
   /* ---------- views, messages, dialog ---------- */
 
   function show(view) {
+    state.view = view;
     ['pin', 'home', 'checkup', 'form'].forEach(function (v) { $('view-' + v).hidden = v !== view; });
     window.scrollTo(0, 0);
   }
@@ -598,11 +599,7 @@
     if (pin.length !== 6) { $('pin-error').textContent = 'PIN má 6 číslic.'; $('pin-input').focus(); return; }
     $('pin-submit').disabled = true;
     busy(true);
-    var res = await call('apiLogin', pin);
-    if (res.ok) {
-      saveSession(res.data.session);
-      res = await call('apiInit');
-    }
+    var res = await call('apiLogin', pin); // returns the start-up data too
     busy(false);
     $('pin-submit').disabled = false;
     if (!res.ok) {
@@ -630,25 +627,68 @@
     setLink('sheet-link', data.spreadsheetUrl);
     setLink('dashboard-link', data.dashboardUrl);
     $('checkup-sub').textContent = 'Kontroly ' + data.timepoints.map(function (t) { return t.code; }).join(' · ');
-    goHome();
+    applyOverview(data.overview);
+    goHome(null, true);
   }
 
-  async function goHome(message) {
+  /* ---------- the overview: cached in memory, refreshed in the background ---------- */
+
+  /**
+   * Home list + every participant with their check-up statuses (see overview_ on the server).
+   * Screens are drawn from this copy at once; it comes with start-up and with every save, and
+   * is refreshed quietly whenever the home screen or the picker is opened.
+   */
+  function applyOverview(ov) {
+    state.home = { today: ov.today, soonDays: ov.soonDays, stats: ov.stats, items: ov.items };
+    state.participants = ov.participants;
+    state.nextId = ov.nextParticipantId;
+    state.init.today = ov.today;
+  }
+
+  var refreshing = null;
+  function refreshOverview() {
+    if (refreshing) return refreshing;
+    refreshing = call('apiOverview').then(function (res) {
+      refreshing = null;
+      if (!res.ok || !state.init) return; // keep the copy we have; errors show up on the next action
+      applyOverview(res.data);
+      redrawFromOverview();
+    });
+    return refreshing;
+  }
+
+  /** Redraws the screen on display with fresh data, without disturbing what the user is doing. */
+  function redrawFromOverview() {
+    if (state.view === 'home') {
+      renderHome();
+    } else if (state.view === 'checkup' && !$('pt-results').hidden) {
+      renderResults($('pt-search').value);
+    } else if (state.view === 'checkup' && state.pickerMode === 'checkup' && state.participantId) {
+      var p = findParticipant(state.participantId);
+      if (p) renderParticipant({ participant: p, timepoints: p.timepoints, today: state.home.today });
+    }
+  }
+
+  function findParticipant(pid) {
+    pid = String(pid || '').trim().toUpperCase();
+    return state.participants.filter(function (p) { return p.id === pid; })[0] || null;
+  }
+
+  /** @param {boolean} fresh  the overview was just received, no need to refresh it */
+  function goHome(message, fresh) {
     clearBanner();
     state.form = null;
     state.dirty = false;
     show('home');
-    $('today-text').textContent = fmtLong(state.init.today);
-    busy(true);
-    var res = await call('apiHome');
-    busy(false);
-    if (!res.ok) { showServerErrors(res); return; }
-    state.home = res.data;
-    state.init.today = res.data.today;
-    $('today-text').textContent = fmtLong(res.data.today);
+    renderHome();
+    if (message) banner(message.kind, message.text);
+    if (!fresh) refreshOverview();
+  }
+
+  function renderHome() {
+    $('today-text').textContent = fmtLong(state.home.today);
     renderDueFilters();
     renderDue();
-    if (message) banner(message.kind, message.text);
   }
 
   function renderDueFilters() {
@@ -697,27 +737,23 @@
 
   /* ---------- check-up: participant picker and timepoints ---------- */
 
-  function openCheckup(selectId, message) { return openPicker('checkup', selectId, message); }
+  function openCheckup(selectId, message, fresh) { return openPicker('checkup', selectId, message, fresh); }
   function openData(selectId) { return openPicker('data', selectId); }
 
   /** Participant picker; mode 'checkup' shows the check-up list, 'data' the read-only overview. */
-  async function openPicker(mode, selectId, message) {
+  async function openPicker(mode, selectId, message, fresh) {
     clearBanner();
     state.form = null;
     state.dirty = false;
     state.pickerMode = mode;
+    state.participantId = null;
     $('picker-title').textContent = mode === 'data' ? 'Data účastníka' : 'Zaznamenat kontrolu';
     show('checkup');
     $('pt-panel').hidden = true;
     $('pt-results').hidden = false;
     $('pt-search').value = '';
-    $('pt-results').textContent = '';
-    busy(true);
-    var res = await call('apiListParticipants');
-    busy(false);
-    if (!res.ok) { showServerErrors(res); return; }
-    state.participants = res.data;
     renderResults('');
+    if (!fresh) refreshOverview();
     if (selectId) await selectParticipant(selectId);
     else $('pt-search').focus();
     if (message) banner(message.kind, message.text);
@@ -751,14 +787,20 @@
     clearBanner();
     $('pt-search').value = pid;
     $('pt-results').hidden = true;
+    if (state.pickerMode === 'checkup') {
+      // check-up statuses come with the overview: no request needed
+      var p = findParticipant(pid);
+      if (!p) { banner('error', 'Účastník ' + pid + ' nebyl nalezen.'); return; }
+      state.participantId = p.id;
+      renderParticipant({ participant: p, timepoints: p.timepoints, today: state.home.today });
+      return;
+    }
     busy(true);
-    var data = state.pickerMode === 'data';
-    var res = await call(data ? 'apiGetParticipantData' : 'apiGetParticipant', pid);
+    var res = await call('apiGetParticipantData', pid);
     busy(false);
     if (!res.ok) { showServerErrors(res); return; }
     state.participantId = res.data.participant.id;
-    if (data) renderParticipantData(res.data);
-    else renderParticipant(res.data);
+    renderParticipantData(res.data);
   }
 
   /* ---------- participant data (read only) ---------- */
@@ -891,13 +933,38 @@
 
   /* ---------- form ---------- */
 
+  /**
+   * A new registration or a new check-up is built from the form definitions and the overview,
+   * without a request; editing saved answers loads them from the server. (If someone else saved
+   * the same check-up meanwhile, the server refuses the duplicate on save.)
+   */
+  function newRecordForm(code, pid) {
+    var def = state.init.forms[code], today = state.home.today;
+    if (!def) return null;
+    var base = { form: code, formLabel: def.label, fields: def.fields, version: null, mode: 'create', meta: null, today: today };
+    if (code === 'REG') {
+      if (pid) return null;
+      var values = { registration_date: today };
+      values.participant_id = state.nextId;
+      return Object.assign(base, { values: values, participant: null, window: null });
+    }
+    var p = findParticipant(pid);
+    var tp = p && p.timepoints.filter(function (t) { return t.code === code; })[0];
+    if (!tp || tp.visit) return null;
+    return Object.assign(base, { values: { visit_date: today }, participant: p, window: tp.window });
+  }
+
   async function openForm(code, pid, returnTo) {
     clearBanner();
-    busy(true);
-    var res = await call('apiGetForm', { form: code, participantId: pid || null });
-    busy(false);
-    if (!res.ok) { showServerErrors(res); return; }
-    state.form = res.data;
+    var form = newRecordForm(code, pid);
+    if (!form) {
+      busy(true);
+      var res = await call('apiGetForm', { form: code, participantId: pid || null });
+      busy(false);
+      if (!res.ok) { showServerErrors(res); return; }
+      form = res.data;
+    }
+    state.form = form;
     state.returnTo = returnTo || 'home';
     state.dirty = false;
     renderForm();
@@ -1164,18 +1231,19 @@
     if (!res.ok) { showServerErrors(res); return; }
 
     var d = res.data, text;
+    applyOverview(d.overview);
     var changed = d.changes + ' ' + plural(d.changes, 'pole změněno', 'pole změněna', 'polí změněno');
     if (d.action === 'none') text = 'Beze změn – nic nebylo uloženo.';
     else if (d.timepoint === 'REG') text = d.action === 'create' ? 'Účastník ' + d.participantId + ' byl zaregistrován.' : 'Registrace ' + d.participantId + ' upravena (' + changed + ').';
+    else text = f.formLabel + ' – ' + d.participantId + (d.action === 'create' ? ' uložena.' : ' upravena (' + changed + ').');
     if (d.timepoint === 'REG' && d.action === 'create' && f.values.participant_id && f.values.participant_id !== d.participantId) {
       text += '\nID ' + f.values.participant_id + ' mezitím přidělil někdo jiný, proto bylo přiděleno ' + d.participantId + '.';
     }
-    else text = f.formLabel + ' – ' + d.participantId + (d.action === 'create' ? ' uložena.' : ' upravena (' + changed + ').');
     if (d.inWindow === false && d.action !== 'none') text += '\nPozor: datum kontroly je mimo cílové okno.';
     state.dirty = false;
     var msg = { kind: d.action === 'none' ? 'info' : 'success', text: text };
-    if (state.returnTo === 'home' && !(d.timepoint === 'REG' && d.action === 'create')) await goHome(msg);
-    else await openCheckup(d.participantId, msg);
+    if (state.returnTo === 'home' && !(d.timepoint === 'REG' && d.action === 'create')) goHome(msg, true);
+    else await openCheckup(d.participantId, msg, true);
   }
 
   function setSaving(on) {
