@@ -290,6 +290,19 @@
   .codes button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
   .input-short { max-width: 220px; }
 
+  /* colour-coded answers (questionnaire): tone-1 worst (red) … tone-5 best (green), tone-n neutral */
+  .choices.toned label { --tone: var(--grey); --tone-bg: var(--grey-bg); border-color: var(--tone); background: var(--tone-bg);
+    color: var(--tone); font-weight: 600; text-align: center; }
+  .choices.toned label.tone-1 { --tone: #b42d2d; --tone-bg: #fbe8e8; }
+  .choices.toned label.tone-2 { --tone: #b8541a; --tone-bg: #fcefe4; }
+  .choices.toned label.tone-3 { --tone: #8a6100; --tone-bg: #fdf5dc; }
+  .choices.toned label.tone-4 { --tone: #4f7d2f; --tone-bg: #eef6e6; }
+  .choices.toned label.tone-5 { --tone: #237a4b; --tone-bg: #e3f5ea; }
+  .choices.toned label.tone-n { --tone: #5a5d72; --tone-bg: #f1f2f6; border-style: dashed; }
+  .choices.toned label:hover { border-color: var(--tone); filter: brightness(.97); }
+  .choices.toned label:has(input:checked) { background: var(--tone); border-color: var(--tone); color: #fff;
+    box-shadow: 0 0 0 3px var(--tone-bg); }
+
   @media (max-width: 520px) {
     h1 { font-size: 22px; }
     .user { display: none; }
@@ -1315,8 +1328,9 @@
           class: 'choices' + (field.type === 'scale' ? ' scale' : ''), role: 'radiogroup',
           'aria-labelledby': id + '_label', 'aria-describedby': described
         }, opts.map(function (o) {
-          return el('label', null, [el('input', { type: 'radio', name: field.id, value: o }), labelOf(o)]);
+          return el('label', { class: toneClass(field, o) }, [el('input', { type: 'radio', name: field.id, value: o }), labelOf(o)]);
         }));
+        if (field.colors) control.classList.add('toned');
         break;
       }
       default:
@@ -1333,6 +1347,21 @@
     }
     wrap.appendChild(el('div', { class: 'error', id: id + '_error' }));
     return wrap;
+  }
+
+  /**
+   * Colour of an answer button on a colour-coded question (Fields › colors): five tones from
+   * red (worst) to green (best) along the order of the options; "cd" (can't decide) stays grey.
+   */
+  var NEUTRAL = ['cd'];
+  function toneClass(field, o) {
+    if (!field.colors) return null;
+    if (NEUTRAL.indexOf(o) >= 0) return 'tone-n';
+    var scale = field.options.filter(function (x) { return NEUTRAL.indexOf(x) < 0; });
+    if (/^[1-5](,[1-5])*$/.test(field.colors)) return 'tone-' + field.colors.split(',')[scale.indexOf(o)]; // explicit tones
+    var t = scale.length > 1 ? scale.indexOf(o) / (scale.length - 1) : 0.5;
+    if (field.colors === 'good_to_bad') t = 1 - t;
+    return 'tone-' + (1 + Math.round(t * 4)); // tone-1 = worst … tone-5 = best
   }
 
   function fieldWrap(fid) {
