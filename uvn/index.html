@@ -289,6 +289,17 @@
   .codes button { min-height: 34px; padding: 3px 10px; font-size: 13.5px; border-radius: 8px; }
   .codes button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
   .input-short { max-width: 220px; }
+  .home-links { display: flex; gap: 8px 24px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .home-links .dash-link { margin: 0; }
+  button.warn-link { border: 0; background: none; padding: 0; min-height: 32px; color: var(--soon); font-weight: 600; }
+  button.warn-link::before { content: '⚠'; }
+  button.warn-link:hover:not(:disabled) { text-decoration: underline; }
+  .chip.booked { background: var(--accent-soft); color: #00628f; margin-left: 6px; font-weight: 600; }
+  .date-hint { margin-top: 8px; font-size: 14px; font-weight: 600; }
+  .date-hint.ok { color: var(--ok); }
+  .date-hint.warn { color: var(--soon); }
+  #modal-text { white-space: pre-line; }
+  #modal-extra { margin-top: 12px; }
 
   /* colour-coded answers (questionnaire): tone-1 worst (red) … tone-5 best (green), tone-n neutral */
   .choices.toned label { --tone: var(--grey); --tone-bg: var(--grey-bg); border-color: var(--tone); background: var(--tone-bg);
@@ -357,9 +368,12 @@
         <h1 id="home-title">Clareon Toric – ÚVN</h1>
       </div>
 
-      <a class="dash-link" id="dashboard-link" href="#" target="_blank" rel="noopener" hidden>
-        <span data-icon="chart"></span>Otevřít dashboard v tabulce
-      </a>
+      <div class="home-links">
+        <a class="dash-link" id="dashboard-link" href="#" target="_blank" rel="noopener" hidden>
+          <span data-icon="chart"></span>Otevřít dashboard v tabulce
+        </a>
+        <button type="button" class="dash-link warn-link" id="missing-link" hidden></button>
+      </div>
 
       <div class="actions">
         <button type="button" class="action" id="btn-register">
@@ -392,7 +406,7 @@
     <section id="view-checkup" class="view" hidden>
       <button type="button" class="back" id="checkup-back"><span data-icon="back"></span>Domů</button>
       <h1 id="picker-title">Zaznamenat návštěvu</h1>
-      <div class="search">
+      <div class="search" id="pt-search-box">
         <span class="search-icon" data-icon="search"></span>
         <input id="pt-search" type="search" placeholder="Hledat podle kódu pacienta nebo oka (T001, T001-OD)" autocomplete="off" aria-label="Hledat">
       </div>
@@ -416,6 +430,7 @@
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <h2 id="modal-title"></h2>
       <p id="modal-text"></p>
+      <div id="modal-extra" hidden></div>
       <div class="modal-actions">
         <button type="button" id="modal-cancel">Zrušit</button>
         <button type="button" class="primary" id="modal-ok">OK</button>
@@ -451,7 +466,7 @@
   };
 
   var state = {
-    init: null, home: null, dueFilter: 'all', patients: [], nextId: '', pickerMode: 'eye',
+    init: null, home: null, dueFilter: 'all', patients: [], missing: [], nextId: '', pickerMode: 'eye',
     eyeId: null, form: null, returnTo: 'home', saving: false, dirty: false, view: null
   };
 
@@ -639,13 +654,18 @@
     focusFirstError();
   }
 
-  function confirmDialog(title, text, okLabel) {
+  /** Modal with OK/Zrušit; `extra` is an optional element (e.g. a date input) shown under the text. */
+  function confirmDialog(title, text, okLabel, extra) {
     return new Promise(function (resolve) {
       $('modal-title').textContent = title;
       $('modal-text').textContent = text;
       $('modal-ok').textContent = okLabel || 'OK';
+      var slot = $('modal-extra');
+      slot.textContent = '';
+      if (extra) slot.appendChild(extra);
+      slot.hidden = !extra;
       $('modal').hidden = false;
-      $('modal-ok').focus();
+      (extra && extra.querySelector ? extra.querySelector('input') || extra : $('modal-ok')).focus();
       function done(result) {
         $('modal').hidden = true;
         $('modal-ok').onclick = $('modal-cancel').onclick = null;
@@ -666,7 +686,9 @@
 
   async function confirmLeave() {
     if (!state.form || !state.dirty) return true;
-    return confirmDialog('Zahodit změny?', 'Neuložené odpovědi budou ztraceny.', 'Zahodit');
+    var ok = await confirmDialog('Zahodit změny?', 'Neuložené odpovědi budou ztraceny.', 'Zahodit');
+    if (ok) clearDraft(state.form);
+    return ok;
   }
 
   /* ---------- start / home ---------- */
@@ -721,6 +743,7 @@
 
   async function logout() {
     if (state.saving || !(await confirmLeave())) return;
+    clearAllDrafts(); // nothing of the study stays on a shared computer
     showLogin('');
   }
 
@@ -749,6 +772,7 @@
   function applyOverview(ov) {
     state.home = { today: ov.today, soonDays: ov.soonDays, stats: ov.stats, items: ov.items };
     state.patients = ov.patients;
+    state.missing = ov.missing || [];
     state.nextId = ov.nextPatientId;
     state.init.today = ov.today;
   }
@@ -799,6 +823,9 @@
 
   function renderHome() {
     $('today-text').textContent = fmtLong(state.home.today);
+    var nMissing = state.missing.length;
+    $('missing-link').hidden = !nMissing;
+    $('missing-link').textContent = 'Chybějící údaje: ' + nMissing + ' ' + plural(nMissing, 'návštěva', 'návštěvy', 'návštěv') + ' s N/A v klíčových údajích';
     renderDueFilters();
     renderDue();
   }
@@ -806,7 +833,7 @@
   function renderDueFilters() {
     var s = state.home.stats;
     var defs = [['all', 'Vše', s.overdue + s.due + s.soon], ['overdue', 'Po termínu', s.overdue], ['due', 'K provedení', s.due],
-      ['soon', 'Brzy', s.soon]];
+      ['soon', 'Brzy', s.soon], ['unbooked', 'K objednání', state.home.items.filter(isUnbooked).length]];
     var box = $('due-filters');
     box.textContent = '';
     defs.forEach(function (d) {
@@ -821,13 +848,15 @@
     var list = $('due-list');
     list.textContent = '';
     var today = state.home.today;
-    var all = state.dueFilter === 'all';
-    var items = state.home.items.filter(function (it) { return all || it.status === state.dueFilter; });
+    var all = state.dueFilter === 'all' || state.dueFilter === 'unbooked';
+    var items = state.home.items.filter(function (it) {
+      return state.dueFilter === 'all' || (state.dueFilter === 'unbooked' ? isUnbooked(it) : it.status === state.dueFilter);
+    });
     if (!items.length) {
-      list.appendChild(el('li', { class: 'empty', text: all ? 'Teď nic nečeká na zápis.' : 'Nic v této kategorii.' }));
+      list.appendChild(el('li', { class: 'empty', text: state.dueFilter === 'all' ? 'Teď nic nečeká na zápis.' : 'Nic v této kategorii.' }));
       return;
     }
-    // "Vše" is split into sections by status; a single filter is one plain list
+    // "Vše" and "K objednání" are split into sections by status; a single status is one plain list
     (all ? ['overdue', 'due', 'soon'] : [state.dueFilter]).forEach(function (status) {
       var group = items.filter(function (it) { return it.status === status; });
       if (!group.length) return;
@@ -840,7 +869,8 @@
           } }, [
             tpBadge(it.code),
             el('span', { class: 'due-main' }, [
-              el('div', { class: 'who' }, [who + ' ', el('span', { text: [it.eye ? EYE_TEXT[it.eye] : 'pacient', it.label].filter(Boolean).join(' · ') })]),
+              el('div', { class: 'who' }, [who + ' ', el('span', { text: [it.eye ? EYE_TEXT[it.eye] : 'pacient', it.label].filter(Boolean).join(' · ') }),
+                it.appointment ? el('span', { class: 'chip booked', text: 'objednáno ' + fmtShort(it.appointment) }) : null]),
               el('div', { class: 'what', text: it.tpLabel + ' · ' + windowText(it.status, it.window, today, it.code) })
             ]),
             icon('chevron', 'chev')
@@ -850,9 +880,12 @@
     });
   }
 
+  /** A visit that needs booking: due, overdue or soon, not booked yet (questionnaires go with V4). */
+  function isUnbooked(it) { return it.code !== 'QOL' && !it.appointment; }
+
   /* ---------- pickers: eyes, patients ---------- */
 
-  var PICKER_TITLES = { eye: 'Zaznamenat návštěvu', addEye: 'Přidat oko', data: 'Data pacienta' };
+  var PICKER_TITLES = { eye: 'Zaznamenat návštěvu', addEye: 'Přidat oko', data: 'Data pacienta', missing: 'Chybějící údaje' };
 
   /** mode 'eye': eye list -> eye screen; 'addEye': patients with one eye -> registration; 'data': patients -> read-only data. */
   async function openPicker(mode, select, message, fresh) {
@@ -862,6 +895,7 @@
     state.pickerMode = mode;
     state.eyeId = null;
     $('picker-title').textContent = PICKER_TITLES[mode];
+    $('pt-search-box').hidden = mode === 'missing';
     show('checkup');
     $('pt-panel').hidden = true;
     $('pt-results').hidden = false;
@@ -869,7 +903,7 @@
     renderResults('');
     if (!fresh) refreshOverview();
     if (select) await pick(select);
-    else $('pt-search').focus();
+    else if (mode !== 'missing') $('pt-search').focus();
     if (message) banner(message.kind, message.text);
   }
   function openEye(eyeId, message, fresh) { return openPicker('eye', eyeId, message, fresh); }
@@ -888,6 +922,7 @@
   function renderResults(query) {
     var list = $('pt-results');
     list.textContent = '';
+    if (state.pickerMode === 'missing') { renderMissing(list); return; }
     var q = query.trim().toLowerCase();
     var mode = state.pickerMode;
     var rows = [];
@@ -953,6 +988,56 @@
     renderPatientData(res.data);
   }
 
+  /**
+   * The data-cleaning queue: visits whose key fields (Config › key_fields) are N/A or empty, and
+   * visits past their window. Each line opens the form.
+   */
+  function renderMissing(list) {
+    var overdue = state.home.items.filter(function (it) { return it.status === 'overdue'; });
+    var groups = [
+      ['N/A nebo prázdné klíčové údaje', state.missing, function (m) { return m.fields.join(', '); }],
+      ['Návštěvy po termínu', overdue, function (it) { return windowText(it.status, it.window, state.home.today, it.code); }]
+    ];
+    if (!state.missing.length && !overdue.length) {
+      list.appendChild(el('li', { class: 'empty', text: 'Nic nechybí.' }));
+      return;
+    }
+    groups.forEach(function (g) {
+      if (!g[1].length) return;
+      list.appendChild(el('li', { class: 'due-group' }, [g[0], el('span', { class: 'count', text: ' (' + g[1].length + ')' })]));
+      g[1].forEach(function (it) {
+        list.appendChild(el('li', null, [
+          el('button', { type: 'button', class: 'due-item', onclick: function () {
+            openForm(it.code, { patientId: it.patientId, eyeId: it.eyeId }, 'missing');
+          } }, [
+            tpBadge(it.code),
+            el('span', { class: 'due-main' }, [
+              el('div', { class: 'who' }, [(it.eyeId || it.patientId) + ' ', el('span', { text: it.tpLabel })]),
+              el('div', { class: 'what', text: g[2](it) })
+            ]),
+            icon('chevron', 'chev')
+          ])
+        ]));
+      });
+    });
+  }
+
+  /** Book, change or clear the date of a visit that hasn't taken place yet. */
+  async function bookVisit(p, e, tp) {
+    var input = el('input', { type: 'date', class: 'input-short', value: tp.appointment || '', min: p.registrationDate,
+      max: addDays(state.home.today, 365), 'aria-label': 'Datum' });
+    var ok = await confirmDialog(e.eyeId + ' · ' + tp.label,
+      'Datum, na které je pacient objednán. Smažte ho a uložte, pokud termín padl.', 'Uložit termín', el('div', null, [input]));
+    if (!ok) return;
+    busy(true);
+    var res = await call('apiSetAppointment', { patientId: p.id, eyeId: e.eyeId, code: tp.code, date: input.value });
+    busy(false);
+    if (!res.ok) { showServerErrors(res); return; }
+    applyOverview(res.data.overview);
+    renderEye(e.eyeId);
+    banner('success', res.data.date ? tp.code + ' objednána na ' + fmtDate(res.data.date) + '.' : 'Termín ' + tp.code + ' zrušen.');
+  }
+
   /* ---------- eye screen: visits, events, end of participation, questionnaire ---------- */
 
   function renderEye(eyeId) {
@@ -998,6 +1083,8 @@
       var tpDef = findTp(tp.code);
       var blocked = tp.status === 'missed' || tp.status === 'ended' || (tp.status === 'waiting' && tpDef && tpDef.anchor === 'surgery');
       var canRecord = tp.visit || !blocked;
+      var canBook = !tp.visit && tp.status !== 'missed' && tp.status !== 'ended';
+      if (tp.appointment) chips.push(' ', el('span', { class: 'chip booked', text: 'objednáno ' + fmtDate(tp.appointment) }));
       list.appendChild(el('li', null, [
         el('span', { class: 'dot ' + tp.status }),
         el('div', { class: 'tp-body' }, [
@@ -1005,12 +1092,16 @@
             el('div', null, [tpBadge(tp.code), ' ', el('strong', { text: tp.label })].concat(chips)),
             el('div', { class: 'detail', text: detail })
           ]),
-          canRecord ? el('button', {
-            type: 'button',
-            class: tp.status === 'done' ? 'small' : 'primary small',
-            text: tp.status === 'done' ? 'Zobrazit / upravit' : 'Zaznamenat',
-            onclick: function () { openForm(tp.code, ctx, 'eye'); }
-          }) : null
+          el('div', { class: 'head-actions' }, [
+            canBook ? el('button', { type: 'button', class: 'small', text: tp.appointment ? 'Změnit termín' : 'Objednat',
+              onclick: function () { bookVisit(p, e, tp); } }) : null,
+            canRecord ? el('button', {
+              type: 'button',
+              class: tp.status === 'done' ? 'small' : 'primary small',
+              text: tp.status === 'done' ? 'Zobrazit / upravit' : 'Zaznamenat',
+              onclick: function () { openForm(tp.code, ctx, 'eye'); }
+            }) : null
+          ])
         ])
       ]));
     });
@@ -1209,6 +1300,16 @@
     state.dirty = false;
     renderForm();
     show('form');
+    var draft = loadDraft(form);
+    if (draft) {
+      form.fields.forEach(function (fd) {
+        if (fd.id !== 'patient_id' && Object.prototype.hasOwnProperty.call(draft.values, fd.id)) setFieldValue(fd, draft.values[fd.id]);
+      });
+      updateVisibility();
+      updateDateHint();
+      state.dirty = true;
+      banner('info', 'Obnoveny neuložené odpovědi z ' + new Date(draft.at).toLocaleString('cs-CZ') + '. Zrušit je smaže.');
+    }
     if (form.addEye) {
       var fid = 'study_eye_' + form.addEye.toLowerCase();
       var fdef = form.fields.filter(function (f) { return f.id === fid; })[0];
@@ -1262,6 +1363,7 @@
       fieldset.appendChild(renderField(field));
     });
     f.fields.forEach(function (field) { setFieldValue(field, f.values[field.id]); });
+    updateDateHint();
     var idInput = f.form === 'REG' ? $('f_patient_id') : null;
     if (idInput) {
       idInput.disabled = true; // assigned automatically by the server; never editable
@@ -1308,6 +1410,7 @@
       case 'date': {
         var maxDate = addDays(state.form.today, field.max || 0);
         control = el('input', { id: id, name: field.id, type: 'date', max: maxDate, class: 'input-short', 'aria-describedby': described });
+        if (field.id === 'visit_date' && state.form.kind === 'VISIT') extra = el('div', { class: 'date-hint', id: id + '_hint', 'aria-live': 'polite' });
         break;
       }
       case 'select':
@@ -1347,6 +1450,72 @@
     }
     wrap.appendChild(el('div', { class: 'error', id: id + '_error' }));
     return wrap;
+  }
+
+  /* ---------- unsaved answers kept on this device (cleared on save, discard and sign-out) ---------- */
+
+  var DRAFT_PREFIX = 'uvnClareonToric.draft:';
+  var DRAFT_DAYS = 7;
+  function draftKey(f) {
+    return DRAFT_PREFIX + [f.form, f.patient ? f.patient.id : 'new', f.eyeId || '', f.recordId || '', f.mode].join('|');
+  }
+  var draftTimer = null;
+  function saveDraftSoon() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(function () {
+      if (!state.form || !state.dirty) return;
+      try {
+        localStorage.setItem(draftKey(state.form), JSON.stringify({ at: new Date().toISOString(), version: state.form.version, values: collectValues() }));
+      } catch (e) { /* storage unavailable: no draft */ }
+    }, 400);
+  }
+  /** The draft for this form, if it is recent and was made on the same saved version. */
+  function loadDraft(f) {
+    try {
+      var d = JSON.parse(localStorage.getItem(draftKey(f)) || 'null');
+      if (!d) return null;
+      if (Date.now() - Date.parse(d.at) > DRAFT_DAYS * 86400000 || d.version !== f.version) { localStorage.removeItem(draftKey(f)); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
+  function clearDraft(f) {
+    clearTimeout(draftTimer);
+    try { if (f) localStorage.removeItem(draftKey(f)); } catch (e) { /* ignore */ }
+  }
+  function clearAllDrafts() {
+    try {
+      Object.keys(localStorage).filter(function (k) { return k.indexOf(DRAFT_PREFIX) === 0; })
+        .forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- live window check under the visit date ---------- */
+
+  function formEye(f) {
+    var found = f.eyeId && findEye(f.eyeId);
+    if (found) return found.eye;
+    return f.patient ? f.patient.eyes.filter(function (e) { return e.eyeId === f.eyeId; })[0] || null : null;
+  }
+  /** "Den 9 po operaci · v okně (4–14 dní)" under the visit date, updated while typing. */
+  function updateDateHint() {
+    var f = state.form, box = f && $('f_visit_date_hint');
+    if (!box) return;
+    box.textContent = '';
+    box.className = 'date-hint';
+    var iso = $('f_visit_date').value, tp = findTp(f.form), eye = formEye(f);
+    if (!tp || !parseIso(iso) || tp.windowTo === null || tp.windowTo === undefined) return;
+    var anchor = tp.anchor === 'surgery' ? eye && eye.surgeryDate : tp.anchor === 'planned_surgery' ? eye && eye.plannedSurgery : null;
+    if (!anchor) {
+      if (tp.anchor === 'surgery') box.textContent = 'Datum operace zatím není zaznamenáno.';
+      return;
+    }
+    var d = dayDiff(anchor, iso), abs = Math.abs(d);
+    var inWin = d >= tp.windowFrom && d <= tp.windowTo;
+    var what = tp.anchor === 'surgery'
+      ? (d < 0 ? 'před operací' : 'den ' + d + ' po operaci')
+      : (d === 0 ? 'v plánovaný den operace' : abs + ' ' + plural(abs, 'den', 'dny', 'dní') + (d > 0 ? ' po plánovaném datu' : ' před plánovaným datem'));
+    box.textContent = cap(what) + ' · ' + (inWin ? 'v okně' : 'mimo okno') + ' (' + tp.windowFrom + '–' + tp.windowTo + ' dní)';
+    box.classList.add(inWin ? 'ok' : 'warn');
   }
 
   /**
@@ -1540,12 +1709,24 @@
     }
 
     setSaving(true);
-    var res = await call('apiSave', {
+    var payload = {
       form: f.form, patientId: f.patient ? f.patient.id : null, eyeId: f.eyeId || null, recordId: f.recordId || null,
       values: check.values, version: f.version, submissionId: f.mode === 'create' ? f.submissionId : null
-    });
+    };
+    var res = await call('apiSave', payload);
+    if (res.ok && res.data.action === 'confirm') {
+      // plausibility warnings: nothing was saved yet
+      setSaving(false);
+      var go = await confirmDialog('Zkontrolujte prosím',
+        res.data.warnings.map(function (w) { return '• ' + w; }).join('\n') + '\n\nPokud jsou hodnoty správně, uložte je.', 'Uložit přesto');
+      if (!go) return;
+      setSaving(true);
+      payload.confirmWarnings = true;
+      res = await call('apiSave', payload);
+    }
     setSaving(false);
     if (!res.ok) { showServerErrors(res); return; }
+    clearDraft(f);
 
     var d = res.data, text;
     applyOverview(d.overview);
@@ -1563,6 +1744,15 @@
     if (d.inWindow === false && d.action !== 'none') text += '\nPozor: datum návštěvy je mimo cílové okno.';
     state.dirty = false;
     var msg = { kind: d.action === 'none' ? 'info' : 'success', text: text };
+
+    // guided next step: a new patient or eye continues with its pre-op visit, then the other eye's
+    var next = nextStep(f, d);
+    if (next) {
+      await openForm(next.code, next.ctx, 'eye');
+      banner('success', text + '\n' + next.hint);
+      return;
+    }
+    if (state.returnTo === 'missing') { await openPicker('missing', null, msg, true); return; }
 
     // where to go next
     var eyeTarget = d.eyeId || null;
@@ -1586,9 +1776,32 @@
     $('btn-save').textContent = on ? 'Ukládám…' : (state.form && state.form.mode === 'edit' ? 'Uložit změny' : 'Uložit');
   }
 
+  /** The form to open after a save, or null: V0 of a new patient's or new eye's, then of the other eye. */
+  function nextStep(f, d) {
+    if (d.action !== 'create' && !(f.form === 'REG' && f.addEye && d.action === 'update')) return null;
+    var firstCode = ((state.init && state.init.timepoints) || [])[0];
+    firstCode = firstCode ? firstCode.code : null;
+    var open = function (eyeId) {
+      var found = findEye(eyeId);
+      var tp = found && found.eye.timepoints.filter(function (t) { return t.code === firstCode; })[0];
+      return tp && !tp.visit && !found.eye.ended ? eyeId : null;
+    };
+    var target = null;
+    if (f.form === 'REG') target = open(f.addEye ? d.patientId + '-' + f.addEye : d.eyeIds[0]);
+    else if (f.form === firstCode) {
+      var p = findPatient(d.patientId);
+      var other = p && p.eyes.filter(function (e) { return e.eyeId !== d.eyeId; })[0];
+      target = other ? open(other.eyeId) : null;
+    }
+    if (!target) return null;
+    return { code: firstCode, ctx: { patientId: d.patientId, eyeId: target },
+      hint: 'Pokračujte vyšetřením oka ' + target + ' (' + EYE_TEXT[target.slice(-2)] + '), nebo se vraťte tlačítkem Zpět.' };
+  }
+
   async function leaveForm() {
     if (state.saving || !(await confirmLeave())) return;
     state.dirty = false;
+    if (state.returnTo === 'missing') { openPicker('missing'); return; }
     if (state.returnTo === 'eye' && state.returnEye && findEye(state.returnEye)) openEye(state.returnEye);
     else goHome();
   }
@@ -1603,6 +1816,7 @@
   $('btn-add-eye').addEventListener('click', function () { openPicker('addEye'); });
   $('btn-checkup').addEventListener('click', function () { openPicker('eye'); });
   $('btn-data').addEventListener('click', function () { openPicker('data'); });
+  $('missing-link').addEventListener('click', function () { openPicker('missing'); });
   $('checkup-back').addEventListener('click', function () { goHome(); });
   $('pt-search').addEventListener('input', function (e) {
     $('pt-panel').hidden = true;
@@ -1617,6 +1831,8 @@
   var form = $('data-form');
   function onEdit(e) {
     state.dirty = true;
+    saveDraftSoon();
+    if (e.target.id === 'f_visit_date') updateDateHint();
     var wrap = e.target.closest('.field');
     if (wrap) {
       var fid = wrap.getAttribute('data-field');
