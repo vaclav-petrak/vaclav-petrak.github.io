@@ -1328,7 +1328,7 @@
     if (field.allowNa) {
       wrap.appendChild(el('label', { class: 'na' }, [
         el('input', { type: 'checkbox', class: 'na-box', onchange: function (e) { applyNa(field, e.target.checked); } }),
-        'N/A – nezměřeno / nelze odpovědět'
+        'N/A'
       ]));
     }
     wrap.appendChild(el('div', { class: 'error', id: id + '_error' }));
@@ -1532,9 +1532,6 @@
       text += '\nKód ' + f.values.patient_id + ' mezitím přidělil někdo jiný, proto byl přidělen ' + d.patientId + '.';
     }
     if (d.inWindow === false && d.action !== 'none') text += '\nPozor: datum návštěvy je mimo cílové okno.';
-    if (f.form !== 'REG' && f.kind === 'VISIT' && check.values.new_event === 'yes' && d.action !== 'none') {
-      text += '\nNezapomeňte zapsat novou příhodu nebo zákrok v části „Nežádoucí příhody a zákroky“.';
-    }
     state.dirty = false;
     var msg = { kind: d.action === 'none' ? 'info' : 'success', text: text };
 
