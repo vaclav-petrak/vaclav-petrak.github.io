@@ -301,6 +301,8 @@
   #modal-text { white-space: pre-line; }
   #modal-extra { margin-top: 12px; }
   .modal-fields { display: flex; flex-direction: column; gap: 10px; }
+  .choices.checks { flex-direction: column; align-items: stretch; }
+  .choices.checks label { justify-content: flex-start; text-align: left; }
   .chip.not_done { background: var(--grey-bg); color: var(--grey); }
   .dot.not_done { border-color: var(--faint); background: var(--grey-bg); }
   button.not-done-btn { color: var(--grey); border-style: dashed; }
@@ -448,7 +450,8 @@
 'use strict';
 (function () {
   var NA = 'NA';
-  var GROUP_TYPES = ['radio', 'yesno', 'scale'];
+  var GROUP_TYPES = ['radio', 'yesno', 'scale', 'checkboxes'];
+  var NONE = 'none'; // exclusive option of a checkboxes question
   var NUMBER_TYPES = ['number', 'integer'];
   var STATUS_TEXT = {
     done: 'Hotovo', due: 'K provedení', overdue: 'Po termínu', soon: 'Brzy', not_yet_due: 'Ještě ne',
@@ -1230,6 +1233,7 @@
     if (v === '') return '—';
     if (v === NA) return 'N/A';
     if (field.type === 'date') return fmtDate(v);
+    if (field.type === 'checkboxes') return v.split('|').map(function (x) { return (field.optionLabels && field.optionLabels[x]) || x; }).join('; ');
     if (field.optionLabels && field.optionLabels[v]) return field.optionLabels[v] === v ? v : field.optionLabels[v];
     if (NUMBER_TYPES.indexOf(field.type) >= 0) return fmtNum(v);
     return v;
@@ -1489,6 +1493,18 @@
             return el('option', { value: o, text: labelOf(o) });
           })));
         break;
+      case 'checkboxes':
+        control = el('div', { class: 'choices checks', role: 'group', 'aria-labelledby': id + '_label', 'aria-describedby': described },
+          field.options.map(function (o) {
+            return el('label', null, [el('input', { type: 'checkbox', name: field.id, value: o, onchange: function (e) {
+              // "Žádné" excludes the others and vice versa
+              if (!e.target.checked) return;
+              control.querySelectorAll('input').forEach(function (c) {
+                if (c !== e.target && (o === NONE || c.value === NONE)) c.checked = false;
+              });
+            } }), labelOf(o)]);
+          }));
+        break;
       case 'radio':
       case 'yesno':
       case 'scale': {
@@ -1615,7 +1631,7 @@
     var wrap = fieldWrap(field.id);
     controls(wrap).forEach(function (c) {
       c.disabled = checked;
-      if (checked) { if (c.type === 'radio') c.checked = false; else if (c.tagName !== 'BUTTON') c.value = ''; }
+      if (checked) { if (c.type === 'radio' || c.type === 'checkbox') c.checked = false; else if (c.tagName !== 'BUTTON') c.value = ''; }
     });
     syncCodes(field);
     clearFieldError(field.id);
@@ -1635,6 +1651,9 @@
     var wrap = fieldWrap(field.id);
     var na = wrap.querySelector('.na-box');
     if (na && na.checked) return NA;
+    if (field.type === 'checkboxes') {
+      return Array.prototype.map.call(wrap.querySelectorAll('input[type=checkbox]:not(.na-box):checked'), function (c) { return c.value; }).join('|');
+    }
     if (GROUP_TYPES.indexOf(field.type) >= 0) {
       var checked = wrap.querySelector('input[type=radio]:checked');
       return checked ? checked.value : '';
@@ -1647,7 +1666,10 @@
     var wrap = fieldWrap(field.id);
     var na = wrap.querySelector('.na-box');
     if (v === NA && na) { na.checked = true; applyNa(field, true); return; }
-    if (GROUP_TYPES.indexOf(field.type) >= 0) {
+    if (field.type === 'checkboxes') {
+      var ticks = v.toLowerCase().split('|');
+      wrap.querySelectorAll('input[type=checkbox]:not(.na-box)').forEach(function (c) { c.checked = ticks.indexOf(c.value.toLowerCase()) >= 0; });
+    } else if (GROUP_TYPES.indexOf(field.type) >= 0) {
       wrap.querySelectorAll('input[type=radio]').forEach(function (r) {
         r.checked = v !== '' && r.value.toLowerCase() === v.toLowerCase();
       });
@@ -1670,7 +1692,8 @@
     function test(cond, value) {
       var v = String(value || '').trim().toLowerCase();
       if (v === '' || v === NA.toLowerCase()) return false;
-      var hit = cond.values.some(function (x) { return x.toLowerCase() === v; });
+      var parts = v.split('|');
+      var hit = cond.values.some(function (x) { return parts.indexOf(x.toLowerCase()) >= 0; });
       return cond.op === '=' ? hit : !hit;
     }
     function visible(id, depth) {
