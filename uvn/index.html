@@ -300,6 +300,11 @@
   .date-hint.warn { color: var(--soon); }
   #modal-text { white-space: pre-line; }
   #modal-extra { margin-top: 12px; }
+  .modal-fields { display: flex; flex-direction: column; gap: 10px; }
+  .chip.not_done { background: var(--grey-bg); color: var(--grey); }
+  .dot.not_done { border-color: var(--faint); background: var(--grey-bg); }
+  button.not-done-btn { color: var(--grey); border-style: dashed; }
+  .form-actions #btn-not-done { margin-left: auto; }
 
   /* colour-coded answers (questionnaire): tone-1 worst (red) … tone-5 best (green), tone-n neutral */
   .choices.toned label { --tone: var(--grey); --tone-bg: var(--grey-bg); border-color: var(--tone); background: var(--tone-bg);
@@ -422,6 +427,7 @@
       <div class="form-actions">
         <button type="button" class="primary" id="btn-save">Uložit</button>
         <button type="button" id="btn-cancel">Zrušit</button>
+        <button type="button" id="btn-not-done" class="not-done-btn" hidden>Návštěva neproběhla</button>
       </div>
     </section>
   </main>
@@ -446,7 +452,7 @@
   var NUMBER_TYPES = ['number', 'integer'];
   var STATUS_TEXT = {
     done: 'Hotovo', due: 'K provedení', overdue: 'Po termínu', soon: 'Brzy', not_yet_due: 'Ještě ne',
-    waiting: 'Čeká', missed: 'Zmeškáno', ended: 'Ukončeno', not_applicable: 'Neplatí', unknown: 'Neznámý'
+    waiting: 'Čeká', missed: 'Zmeškáno', ended: 'Ukončeno', not_applicable: 'Neplatí', not_done: 'Neproběhla', unknown: 'Neznámý'
   };
   var EYE_TEXT = { OD: 'pravé oko', OS: 'levé oko' };
 
@@ -539,6 +545,7 @@
     if (status === 'missed') return 'nelze doplnit, už proběhla pozdější návštěva';
     if (status === 'ended') return 'účast oka byla ukončena';
     if (status === 'not_applicable') return 'účast všech očí byla ukončena';
+    if (status === 'not_done') return 'neproběhla';
     if (!w) return '';
     if (!w.end) {
       if (status === 'overdue') return 'chybí – oko už bylo operováno';
@@ -1014,6 +1021,65 @@
     });
   }
 
+  function notDoneText(nd) {
+    return 'Neproběhla: ' + nd.reasonLabel + (nd.note ? ' – ' + nd.note : '') + ' (' + nd.by + ', ' + fmtStamp(nd.at) + ')';
+  }
+
+  /**
+   * "Návštěva neproběhla": reason + note. After the last visit it can also open the end of the
+   * eye's participation, prefilled. The eye otherwise stays in the study.
+   */
+  async function markNotDone(pid, eyeId, code, label) {
+    var tps = state.init.timepoints, isLast = tps.length && tps[tps.length - 1].code === code;
+    var select = el('select', { 'aria-label': 'Důvod' }, [el('option', { value: '', text: '— důvod —' })].concat(
+      state.init.notDoneReasons.map(function (o) { return el('option', { value: o.value, text: o.label }); })));
+    var note = el('input', { type: 'text', maxlength: 500, placeholder: 'Poznámka (nepovinné, bez jmen)', 'aria-label': 'Poznámka' });
+    var end = el('input', { type: 'checkbox' });
+    var box = el('div', { class: 'modal-fields' }, [select, note,
+      isLast && eyeId ? el('label', { class: 'na' }, [end, 'Pacient už nepřijde – ukončit také účast oka']) : null]);
+    var ok = await confirmDialog((eyeId || pid) + ' · ' + label + (code === 'QOL' ? ' nevyplněn' : ' neproběhla'),
+      'Zmizí ze seznamu k provedení. Když pacient přece jen přijde, zaznamenejte ji normálně.', 'Uložit', box);
+    if (!ok) return false;
+    if (!select.value) { banner('error', 'Vyberte důvod.'); return false; }
+    busy(true);
+    var res = await call('apiSetNotDone', { patientId: pid, eyeId: eyeId || null, code: code, reason: select.value, note: note.value });
+    busy(false);
+    if (!res.ok) { showServerErrors(res); return false; }
+    applyOverview(res.data.overview);
+    clearDraft(state.form);
+    state.form = null;
+    state.dirty = false;
+    var msg = { kind: 'success', text: (eyeId || pid) + ' · ' + label + ': označeno jako neproběhlé.' };
+    if (end.checked && eyeId) {
+      await openForm('END', { patientId: pid, eyeId: eyeId }, 'eye');
+      var reasonMap = { no_show: 'lost', refused: 'withdrawn' };
+      var fr = state.form && state.form.fields.filter(function (f) { return f.id === 'end_reason'; })[0];
+      if (fr && reasonMap[select.value]) setFieldValue(fr, reasonMap[select.value]);
+      var fnote = state.form && state.form.fields.filter(function (f) { return f.id === 'end_note'; })[0];
+      if (fnote && note.value) setFieldValue(fnote, note.value);
+      state.dirty = true;
+      banner('success', msg.text + '\nZkontrolujte a uložte ukončení účasti oka.');
+      return true;
+    }
+    var back = eyeId || state.returnEye || state.eyeId;
+    if (back && findEye(back)) await openEye(back, msg, true);
+    else goHome(msg, true);
+    return true;
+  }
+
+  async function undoNotDone(pid, eyeId, code, label) {
+    var ok = await confirmDialog('Zrušit označení?', (eyeId || pid) + ' · ' + label + ' se znovu objeví mezi návštěvami k provedení.', 'Zrušit označení');
+    if (!ok) return;
+    busy(true);
+    var res = await call('apiSetNotDone', { patientId: pid, eyeId: eyeId || null, code: code, reason: '' });
+    busy(false);
+    if (!res.ok) { showServerErrors(res); return; }
+    applyOverview(res.data.overview);
+    var back = eyeId || state.eyeId;
+    if (back && findEye(back)) await openEye(back, { kind: 'success', text: 'Označení „neproběhla“ zrušeno.' }, true);
+    else goHome({ kind: 'success', text: 'Označení „neproběhl“ zrušeno.' }, true);
+  }
+
   /** Book, change or clear the date of a visit that hasn't taken place yet. */
   async function bookVisit(p, e, tp) {
     var input = el('input', { type: 'date', class: 'input-short', value: tp.appointment || '', min: p.registrationDate,
@@ -1069,13 +1135,16 @@
     e.timepoints.forEach(function (tp) {
       var detail = tp.status === 'done'
         ? (tp.code === surgeryCode() ? 'Operace ' : 'Návštěva ') + fmtDate(tp.visit.visitDate) + ' · uložil(a) ' + tp.visit.updatedBy + ', ' + fmtStamp(tp.visit.updatedAt)
+        : tp.notDone ? notDoneText(tp.notDone)
         : cap(windowText(tp.status, tp.window, today, tp.code));
       var chips = [chip(tp.status)];
       if (tp.visit && tp.visit.inWindow === false) chips.push(' ', el('span', { class: 'chip outside', text: 'Mimo okno' }));
       var tpDef = findTp(tp.code);
       var blocked = tp.status === 'missed' || tp.status === 'ended' || (tp.status === 'waiting' && tpDef && tpDef.anchor === 'surgery');
       var canRecord = tp.visit || !blocked;
-      var canBook = !tp.visit && tp.status !== 'missed' && tp.status !== 'ended';
+      var canBook = !tp.visit && !tp.notDone && tp.status !== 'missed' && tp.status !== 'ended';
+      var canMark = !tp.visit && tp.code !== surgeryCode() && tp.status !== 'ended' && tp.status !== 'missed' &&
+        tp.status !== 'waiting' && tp.status !== 'not_yet_due';
       if (tp.appointment) chips.push(' ', el('span', { class: 'chip booked', text: 'objednáno ' + fmtDate(tp.appointment) }));
       list.appendChild(el('li', null, [
         el('span', { class: 'dot ' + tp.status }),
@@ -1085,6 +1154,8 @@
             el('div', { class: 'detail', text: detail })
           ]),
           el('div', { class: 'head-actions' }, [
+            canMark ? el('button', { type: 'button', class: 'small not-done-btn', text: tp.notDone ? 'Zrušit „neproběhla“' : 'Neproběhla',
+              onclick: function () { if (tp.notDone) undoNotDone(p.id, e.eyeId, tp.code, tp.label); else markNotDone(p.id, e.eyeId, tp.code, tp.label); } }) : null,
             canBook ? el('button', { type: 'button', class: 'small', text: tp.appointment ? 'Změnit termín' : 'Objednat',
               onclick: function () { bookVisit(p, e, tp); } }) : null,
             canRecord ? el('button', {
@@ -1123,10 +1194,14 @@
     panel.appendChild(el('div', { class: 'card' }, [
       el('div', { class: 'card-title' }, [el('h2', null, [tpBadge('QOL'), ' Dotazník pacienta']), chip(q.status)]),
       el('div', { class: 'detail', text: q.status === 'done' ? 'Vyplněn ' + fmtDate(q.date) + '. Jeden dotazník na pacienta.'
+        : q.notDone ? notDoneText(q.notDone)
         : cap(windowText(q.status, q.window, today, 'QOL')) + '. Jeden dotazník na pacienta, při kontrole po 3 měsících později operovaného oka.' }),
       q.status === 'not_applicable' ? null : el('div', { class: 'card-actions' }, [
         el('button', { type: 'button', class: q.status === 'due' || q.status === 'overdue' ? 'primary small' : 'small',
-          text: q.status === 'done' ? 'Zobrazit / upravit' : 'Zaznamenat dotazník', onclick: function () { openForm('QOL', { patientId: p.id }, 'eye'); } })
+          text: q.status === 'done' ? 'Zobrazit / upravit' : 'Zaznamenat dotazník', onclick: function () { openForm('QOL', { patientId: p.id }, 'eye'); } }),
+        q.status === 'done' || q.status === 'waiting' || q.status === 'not_yet_due' ? null
+          : el('button', { type: 'button', class: 'small not-done-btn', text: q.notDone ? 'Zrušit „neproběhl“' : 'Neproběhl',
+            onclick: function () { if (q.notDone) undoNotDone(p.id, '', 'QOL', 'Dotazník'); else markNotDone(p.id, '', 'QOL', 'Dotazník'); } })
       ])
     ]));
 
@@ -1225,7 +1300,7 @@
         if (tp.visit && tp.visit.inWindow === false) chips.push(el('span', { class: 'chip outside', text: 'Mimo okno' }));
         var detail = tp.visit
           ? fmtDate(tp.visit.values.visit_date) + (tp.visit.daysSinceSurgery !== null && tp.code !== surgeryCode() ? ' · den ' + tp.visit.daysSinceSurgery + ' od operace' : '')
-          : windowText(tp.status, tp.window, today, tp.code);
+          : tp.notDone ? notDoneText(tp.notDone) : windowText(tp.status, tp.window, today, tp.code);
         panel.appendChild(recordBox(tpBadge(tp.code), tp.label, chips, detail, tp.visit, false));
       });
       e.events.forEach(function (ev) {
@@ -1363,6 +1438,9 @@
     }
     updateVisibility();
     $('btn-save').textContent = f.mode === 'edit' ? 'Uložit změny' : 'Uložit';
+    var markable = f.mode === 'create' && (f.kind === 'QOL' || (f.kind === 'VISIT' && f.form !== surgeryCode()));
+    $('btn-not-done').hidden = !markable;
+    $('btn-not-done').textContent = f.kind === 'QOL' ? 'Dotazník nevyplněn' : 'Návštěva neproběhla';
   }
 
   function renderField(field) {
@@ -1819,6 +1897,11 @@
   $('form-back').addEventListener('click', leaveForm);
   $('btn-cancel').addEventListener('click', leaveForm);
   $('btn-save').addEventListener('click', save);
+  $('btn-not-done').addEventListener('click', function () {
+    var f = state.form;
+    if (!f || state.saving) return;
+    markNotDone(f.patient.id, f.eyeId || '', f.form, f.formLabel);
+  });
 
   var form = $('data-form');
   function onEdit(e) {
