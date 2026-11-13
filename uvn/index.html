@@ -824,8 +824,8 @@
   function renderHome() {
     $('today-text').textContent = fmtLong(state.home.today);
     var nMissing = state.missing.length;
-    $('missing-link').hidden = !nMissing;
-    $('missing-link').textContent = 'Chybějící údaje: ' + nMissing + ' ' + plural(nMissing, 'návštěva', 'návštěvy', 'návštěv') + ' s N/A v klíčových údajích';
+    $('missing-link').hidden = !nMissing; // normally hidden: the form doesn't save empty required answers
+    $('missing-link').textContent = 'Nevyplněné údaje: ' + nMissing + ' ' + plural(nMissing, 'záznam', 'záznamy', 'záznamů');
     renderDueFilters();
     renderDue();
   }
@@ -885,7 +885,7 @@
 
   /* ---------- pickers: eyes, patients ---------- */
 
-  var PICKER_TITLES = { eye: 'Zaznamenat návštěvu', addEye: 'Přidat oko', data: 'Data pacienta', missing: 'Chybějící údaje' };
+  var PICKER_TITLES = { eye: 'Zaznamenat návštěvu', addEye: 'Přidat oko', data: 'Data pacienta', missing: 'Nevyplněné údaje' };
 
   /** mode 'eye': eye list -> eye screen; 'addEye': patients with one eye -> registration; 'data': patients -> read-only data. */
   async function openPicker(mode, select, message, fresh) {
@@ -989,36 +989,28 @@
   }
 
   /**
-   * The data-cleaning queue: visits whose key fields (Config › key_fields) are N/A or empty, and
-   * visits past their window. Each line opens the form.
+   * Saved records with empty required questions (not N/A): questions added to the Fields tab
+   * after the record was saved, or hand edits of the Sheet. Each line opens the record.
    */
   function renderMissing(list) {
-    var overdue = state.home.items.filter(function (it) { return it.status === 'overdue'; });
-    var groups = [
-      ['N/A nebo prázdné klíčové údaje', state.missing, function (m) { return m.fields.join(', '); }],
-      ['Návštěvy po termínu', overdue, function (it) { return windowText(it.status, it.window, state.home.today, it.code); }]
-    ];
-    if (!state.missing.length && !overdue.length) {
-      list.appendChild(el('li', { class: 'empty', text: 'Nic nechybí.' }));
+    if (!state.missing.length) {
+      list.appendChild(el('li', { class: 'empty', text: 'Všechny uložené záznamy jsou vyplněné.' }));
       return;
     }
-    groups.forEach(function (g) {
-      if (!g[1].length) return;
-      list.appendChild(el('li', { class: 'due-group' }, [g[0], el('span', { class: 'count', text: ' (' + g[1].length + ')' })]));
-      g[1].forEach(function (it) {
-        list.appendChild(el('li', null, [
-          el('button', { type: 'button', class: 'due-item', onclick: function () {
-            openForm(it.code, { patientId: it.patientId, eyeId: it.eyeId }, 'missing');
-          } }, [
-            tpBadge(it.code),
-            el('span', { class: 'due-main' }, [
-              el('div', { class: 'who' }, [(it.eyeId || it.patientId) + ' ', el('span', { text: it.tpLabel })]),
-              el('div', { class: 'what', text: g[2](it) })
-            ]),
-            icon('chevron', 'chev')
-          ])
-        ]));
-      });
+    list.appendChild(el('li', { class: 'empty', text: 'Uložené záznamy, ve kterých chybí odpověď na povinnou otázku (N/A se nepočítá).' }));
+    state.missing.forEach(function (it) {
+      list.appendChild(el('li', null, [
+        el('button', { type: 'button', class: 'due-item', onclick: function () {
+          openForm(it.code, { patientId: it.patientId, eyeId: it.eyeId, recordId: it.recordId }, 'missing');
+        } }, [
+          tpBadge(it.code),
+          el('span', { class: 'due-main' }, [
+            el('div', { class: 'who' }, [(it.eyeId || it.patientId) + ' ', el('span', { text: it.tpLabel })]),
+            el('div', { class: 'what', text: 'Nevyplněno: ' + it.fields.join(', ') })
+          ]),
+          icon('chevron', 'chev')
+        ])
+      ]));
     });
   }
 
